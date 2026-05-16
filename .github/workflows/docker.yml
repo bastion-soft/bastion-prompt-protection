@@ -1,22 +1,45 @@
 name: Build and publish Docker images
 
-# Fires on every GitHub Release publication. Builds CPU + GPU images,
-# tags them with `latest` and the release version, pushes to both
-# GitHub Container Registry (GHCR) and Docker Hub.
+# Manually-triggered Docker image build & push. Decoupled from the PyPI
+# release workflow (`publish.yml`) because:
+#   - The Dockerfile pip-installs bastion-prompt-protection from PyPI, so
+#     it must run AFTER `publish.yml` has succeeded, not in parallel.
+#   - Docker base-image refreshes (CUDA / Python security patches) often
+#     need to ship without cutting a new PyPI release.
+#   - Build failures on one shouldn't block the other.
+#
+# Typical workflow:
+#   1. Tag + draft a GitHub Release for vX.Y.Z → `publish.yml` ships to PyPI.
+#   2. Verify the PyPI release works (pip install in a fresh venv).
+#   3. Go to Actions → "Build and publish Docker images" → "Run workflow"
+#      → pick branch `main`, optionally type a version tag, click Run.
+#
+# Tags applied:
+#   - `<version>` and `latest` for the CPU image
+#   - `<version>-gpu` and `latest-gpu` for the GPU image
+# Where <version> defaults to the package version in
+# bastion_prompt_protection/version.py if the workflow input is left blank.
 #
 # One-time setup:
-#   1. GHCR — works automatically; the workflow uses GITHUB_TOKEN.
-#   2. Docker Hub — create an access token at https://hub.docker.com/settings/security
-#      then add two repository secrets:
+#   1. GHCR — works automatically; uses GITHUB_TOKEN.
+#   2. Docker Hub — create an access token at
+#      https://hub.docker.com/settings/security then add two repository
+#      secrets:
 #         DOCKERHUB_USERNAME — your Docker Hub username
 #         DOCKERHUB_TOKEN    — the access token
 #      (Skip these if you only want to publish to GHCR; the dockerhub
 #      push step will warn-and-skip on missing creds.)
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: >-
+          Image tag to publish (e.g. `1.0.0`). Leave blank to read from
+          bastion_prompt_protection/version.py.
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -40,14 +63,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set tag
+      - name: Resolve version
         id: tag
         run: |
-          REF="${GITHUB_REF#refs/tags/}"
-          if [ "$REF" = "$GITHUB_REF" ]; then
-            REF="latest"
+          INPUT="${{ inputs.version }}"
+          if [ -z "$INPUT" ]; then
+            VERSION=$(python -c 'g={}; exec(open("bastion_prompt_protection/version.py").read(), g); print(g["__version__"])')
+          else
+            VERSION="$INPUT"
           fi
-          echo "version=$REF" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building images tagged: $VERSION (+ latest)"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
