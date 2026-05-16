@@ -1,7 +1,7 @@
 name: Publish to PyPI
 
 # Fires when you publish a GitHub Release (Releases → Draft a new release).
-# Tag the release `v1.0.0`, `v1.0.1`, etc — must match bastion-prompt-protection/version.py.
+# Tag the release `v1.0.0`, `v1.0.1`, etc — must match bastion_prompt_protection/version.py.
 #
 # Authentication: PyPI Trusted Publishing (OIDC). No API token is stored.
 # One-time setup on PyPI: https://pypi.org/manage/account/publishing/
@@ -32,13 +32,13 @@ jobs:
 
       - name: verify tag matches package version
         # Read version.py in an isolated namespace — `from bastion_prompt_protection.version
-        # import ...` would trigger bastion-prompt-protection/__init__.py and pull in numpy
+        # import ...` would trigger bastion_prompt_protection/__init__.py and pull in numpy
         # before we've installed any deps. version.py is a single
         # __version__ = "..." line with no imports of its own, so exec'ing
         # it into an empty dict is safe and dependency-free.
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          PKG_VERSION="v$(python -c 'g={}; exec(open("bastion-prompt-protection/version.py").read(), g); print(g["__version__"])')"
+          PKG_VERSION="v$(python -c 'g={}; exec(open("bastion_prompt_protection/version.py").read(), g); print(g["__version__"])')"
           echo "tag=$TAG pkg=$PKG_VERSION"
           if [ "$TAG" != "$PKG_VERSION" ]; then
             echo "::error::tag $TAG does not match package version $PKG_VERSION"
