@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "bastion-prompt-protection"
 dynamic = ["version"]
 description = "Local prompt injection and jailbreak detection for LLM applications"
-readme = "README.md"
+readme = "README.pypi.md"
 requires-python = ">=3.10"
 license = { text = "AGPL-3.0-or-later" }
 authors = [
