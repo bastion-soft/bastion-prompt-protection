@@ -66,8 +66,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/bastionsoft/bastion-prompt-protection"
-Issues = "https://github.com/bastionsoft/bastion-prompt-protection/issues"
+Homepage = "https://github.com/bastion-soft/bastion-prompt-protection"
+Issues = "https://github.com/bastion-soft/bastion-prompt-protection/issues"
 
 [tool.hatch.version]
 path = "bastion_prompt_protection/version.py"

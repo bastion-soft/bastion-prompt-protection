@@ -1,6 +1,6 @@
 # Bastion Prompt Protection
 
-[![CI](https://github.com/bastionsoft/bastion-prompt-protection/actions/workflows/ci.yml/badge.svg)](https://github.com/bastionsoft/bastion-prompt-protection/actions/workflows/ci.yml)
+[![CI](https://github.com/bastion-soft/bastion-prompt-protection/actions/workflows/ci.yml/badge.svg)](https://github.com/bastion-soft/bastion-prompt-protection/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![PyPI](https://img.shields.io/badge/pypi-bastion--prompt--protection-blue)](https://pypi.org/project/bastion-prompt-protection)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
@@ -106,8 +106,8 @@ Tutorial: [`examples/03_eval/`](examples/03_eval/README.md). Eval harness in [`e
 The trust-and-deploy path. Pull a pre-built image. No Python install required. Call from any language over HTTP.
 
 ```bash
-docker pull ghcr.io/bastionsoft/bastion-server:latest
-docker run -p 8080:8080 ghcr.io/bastionsoft/bastion-server:latest
+docker pull ghcr.io/bastion-soft/bastion-server:latest
+docker run -p 8080:8080 ghcr.io/bastion-soft/bastion-server:latest
 ```
 
 ```bash
@@ -117,7 +117,7 @@ curl -X POST localhost:8080/protect \
 # {"risk": 0.97, "label": "attack", ...}
 ```
 
-GPU variant: `ghcr.io/bastionsoft/bastion-server:latest-gpu` (requires `--gpus all`). Mirrored on Docker Hub at `bastionsoft/bastion-server:latest`.
+GPU variant: `ghcr.io/bastion-soft/bastion-server:latest-gpu` (requires `--gpus all`). Mirrored on Docker Hub at `bastionsoft/bastion-server:latest`.
 
 Tutorial: [`examples/04_server/`](examples/04_server/README.md). Production Dockerfiles in [`docker/`](docker/). The published images are byte-for-byte reproducible from those Dockerfiles.
 
@@ -144,6 +144,6 @@ If you use Bastion Prompt Protection as part of a software, AGPL obligates you t
   title  = {Bastion Prompt Protection: Local Prompt-Injection Detection for LLM Applications},
   author = {Bastion Soft},
   year   = {2026},
-  url    = {https://github.com/bastionsoft/bastion-prompt-protection}
+  url    = {https://github.com/bastion-soft/bastion-prompt-protection}
 }
 ```

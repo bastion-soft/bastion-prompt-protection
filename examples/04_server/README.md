@@ -37,11 +37,11 @@ docker run -p 8080:8080 bastion-server:cpu
 ### Option C — Pull the pre-built image (recommended for production)
 
 ```bash
-docker pull ghcr.io/bastionsoft/bastion-server:latest
-docker run -p 8080:8080 ghcr.io/bastionsoft/bastion-server:latest
+docker pull ghcr.io/bastion-soft/bastion-server:latest
+docker run -p 8080:8080 ghcr.io/bastion-soft/bastion-server:latest
 ```
 
-GPU variant: `ghcr.io/bastionsoft/bastion-server:latest-gpu` (requires `--gpus all`).
+GPU variant: `ghcr.io/bastion-soft/bastion-server:latest-gpu` (requires `--gpus all`).
 
 Mirrored on Docker Hub: `bastionsoft/bastion-server:latest`.
 

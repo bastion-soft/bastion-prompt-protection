@@ -6,7 +6,7 @@ If you find a way to bypass Bastion Prompt Protection's detection in production
 deployments — e.g., a novel jailbreak template, an obfuscation technique we
 miss, or a structural weakness in the pipeline — please report it privately
 via the **Report a vulnerability** button on the repository's
-[Security tab](https://github.com/bastionsoft/bastion-prompt-protection/security) instead of
+[Security tab](https://github.com/bastion-soft/bastion-prompt-protection/security) instead of
 filing a public issue.
 
 We will:

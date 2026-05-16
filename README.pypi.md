@@ -41,7 +41,7 @@ The first call downloads the model from the Hugging Face Hub and caches it under
 
 ## Held-out leaderboard
 
-Four open prompt-injection detectors evaluated across four held-out benchmarks. Numbers reproducible via `python -m scripts.run_leaderboard` in the [GitHub repo](https://github.com/bastionsoft/bastion-prompt-protection).
+Four open prompt-injection detectors evaluated across four held-out benchmarks. Numbers reproducible via `python -m scripts.run_leaderboard` in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection).
 
 | Model | Params | Avg AUC | Avg F1 |
 |---|---:|---:|---:|
@@ -67,20 +67,20 @@ Then optionally set `HF_HUB_OFFLINE=1` to forbid network access at runtime — u
 ## Other deployment options
 
 - **Raw ONNX without the SDK** — for compliance audits or non-Python ports
-- **Pre-built Docker image** — `docker pull ghcr.io/bastionsoft/bastion-server:latest`
+- **Pre-built Docker image** — `docker pull ghcr.io/bastion-soft/bastion-server:latest`
 - **Self-run the benchmark suite** — verify the leaderboard numbers above
 
-All four patterns documented in the [GitHub repo](https://github.com/bastionsoft/bastion-prompt-protection#four-ways-to-use-it).
+All four patterns documented in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection#four-ways-to-use-it).
 
 ## Links
 
-- 📖 [GitHub](https://github.com/bastionsoft/bastion-prompt-protection) — source, examples, full docs
+- 📖 [GitHub](https://github.com/bastion-soft/bastion-prompt-protection) — source, examples, full docs
 - 🤗 [Model card](https://huggingface.co/bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1)
-- 🐳 [Docker images](https://github.com/bastionsoft/bastion-prompt-protection/pkgs/container/bastion-server)
-- 🐛 [Issues](https://github.com/bastionsoft/bastion-prompt-protection/issues)
+- 🐳 [Docker images](https://github.com/bastion-soft/bastion-prompt-protection/pkgs/container/bastion-server)
+- 🐛 [Issues](https://github.com/bastion-soft/bastion-prompt-protection/issues)
 
 ## License
 
-[AGPL-3.0-or-later](https://github.com/bastionsoft/bastion-prompt-protection/blob/main/LICENSE).
+[AGPL-3.0-or-later](https://github.com/bastion-soft/bastion-prompt-protection/blob/main/LICENSE).
 
 If you use Bastion Prompt Protection in a software product that users interact with remotely over a network, AGPL obligates you to make the corresponding source available to those users. **Commercial licensing** is available for organisations whose deployment cannot meet AGPL terms — request a quote at <https://bastionsoft.com>.

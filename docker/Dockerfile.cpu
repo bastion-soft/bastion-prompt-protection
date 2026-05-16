@@ -7,8 +7,8 @@
 #     docker build -f docker/Dockerfile.cpu -t bastion-server:cpu .
 #
 # Or pull the published image (built on every release tag):
-#     docker pull ghcr.io/bastionsoft/bastion-server:latest
-#     docker run -p 8080:8080 ghcr.io/bastionsoft/bastion-server:latest
+#     docker pull ghcr.io/bastion-soft/bastion-server:latest
+#     docker run -p 8080:8080 ghcr.io/bastion-soft/bastion-server:latest
 #
 # Then:
 #     curl -X POST localhost:8080/protect \
