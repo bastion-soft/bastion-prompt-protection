@@ -1,4 +1,7 @@
 bastion-prompt-protection>=1.0.0
 fastapi>=0.110
-uvicorn[standard]>=0.27
+# Bare uvicorn — uvicorn[standard] would pull uvloop/httptools/websockets/
+# watchfiles. We don't use WebSockets or hot-reload in production, and
+# h11 (uvicorn's default HTTP backend) is plenty fast for this workload.
+uvicorn>=0.27
 pydantic>=2.5

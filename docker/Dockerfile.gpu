@@ -60,8 +60,22 @@ RUN pip install -r requirements.txt \
     && pip uninstall -y onnxruntime \
     && pip install onnxruntime-gpu
 
+# Pre-download the model. allow_patterns filters out files the SDK never
+# loads (PyTorch safetensors, fp32 ONNX). Same logic as Dockerfile.cpu —
+# see that file for the breakdown.
 RUN python -c "from huggingface_hub import snapshot_download; \
-    snapshot_download('bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1')"
+    snapshot_download( \
+        'bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1', \
+        allow_patterns=[ \
+            'onnx/model_quantized.onnx', \
+            'tokenizer*', \
+            'spm.model', \
+            'special_tokens_map.json', \
+            'config.json', \
+            'temperature.json', \
+            'labels.txt', \
+        ], \
+    )"
 
 # ────────────────────────────────────────────────────────────────────────
 # Stage 2 — runtime

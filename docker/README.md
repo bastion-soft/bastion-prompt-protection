@@ -1,8 +1,6 @@
 # bastion-prompt-protection
 
-> Note: this README is **the source for the Docker Hub project description**. The `.github/workflows/docker.yml` workflow pushes it to Docker Hub on every successful image build. Edit here, not on hub.docker.com.
-
-Self-hosted prompt-injection and jailbreak detector for LLM applications. The [Bastion Prompt Protection model](https://huggingface.co/bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1) and heuristics layer beat every open public baseline we tested across four held-out benchmarks (rogue-security, xTRam1, S-Labs, JailbreakBench). No API calls. No data leaves your infrastructure. ~5 ms p50 CPU inference. Pre-built images with the model baked in.
+Self-hosted prompt-injection and jailbreak detector for LLM applications. The [Bastion Prompt Protection model](https://huggingface.co/bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1) beats every open public baseline we tested across four held-out benchmarks (rogue-security, xTRam1, S-Labs, JailbreakBench). No API calls. No data leaves your infrastructure. ~5 ms p50 CPU inference. Pre-built images with the model baked in.
 
 ## Pull and run
 
