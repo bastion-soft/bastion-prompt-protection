@@ -106,8 +106,8 @@ Tutorial: [`examples/03_eval/`](examples/03_eval/README.md). Eval harness in [`e
 The trust-and-deploy path. Pull a pre-built image. No Python install required. Call from any language over HTTP.
 
 ```bash
-docker pull ghcr.io/bastion-soft/bastion-server:latest
-docker run -p 8080:8080 ghcr.io/bastion-soft/bastion-server:latest
+docker pull ghcr.io/bastion-soft/bastion-prompt-protection:latest
+docker run -p 8080:8080 ghcr.io/bastion-soft/bastion-prompt-protection:latest
 ```
 
 ```bash
@@ -117,7 +117,7 @@ curl -X POST localhost:8080/protect \
 # {"risk": 0.97, "label": "attack", ...}
 ```
 
-GPU variant: `ghcr.io/bastion-soft/bastion-server:latest-gpu` (requires `--gpus all`). Mirrored on Docker Hub at `bastionsoft/bastion-server:latest`.
+GPU variant: `ghcr.io/bastion-soft/bastion-prompt-protection:latest-gpu` (requires `--gpus all`). Mirrored on Docker Hub at `bastionsoft/bastion-prompt-protection:latest-gpu`.
 
 Tutorial: [`examples/04_server/`](examples/04_server/README.md). Production Dockerfiles in [`docker/`](docker/). The published images are byte-for-byte reproducible from those Dockerfiles.
 
@@ -126,7 +126,7 @@ The entire source code is available on our Github.
 ## Detection pipeline
 
 1. **Heuristics** — structural detectors (zero-width chars, base64 payloads, chat-template tokens).
-2. **Binary classifier** — DeBERTa-v3-xsmall fine-tune (70M params), ONNX-INT8 quantized. Returns a calibrated risk score.
+2. **Binary classifier** — the [Bastion Prompt Protection model](https://huggingface.co/bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1) (DeBERTa-v3-xsmall fine-tune, 70M params), ONNX-INT8 quantized. Returns a temperature-calibrated risk score.
 3. **Multi-class typer** *(v2)* — assigns one of 8 attack types (`jailbreak`, `direct_injection`, `indirect_injection`, `system_prompt_leak`, etc.).
 
 ## License

@@ -4,11 +4,11 @@
 # build time so the container starts instantly with no network access.
 #
 # Build locally:
-#     docker build -f docker/Dockerfile.cpu -t bastion-server:cpu .
+#     docker build -f docker/Dockerfile.cpu -t bastion-prompt-protection:cpu .
 #
 # Or pull the published image (built on every release tag):
-#     docker pull ghcr.io/bastion-soft/bastion-server:latest
-#     docker run -p 8080:8080 ghcr.io/bastion-soft/bastion-server:latest
+#     docker pull ghcr.io/bastion-soft/bastion-prompt-protection:latest
+#     docker run -p 8080:8080 ghcr.io/bastion-soft/bastion-prompt-protection:latest
 #
 # Then:
 #     curl -X POST localhost:8080/protect \
@@ -16,6 +16,14 @@
 #          -d '{"prompt": "Ignore previous instructions"}'
 
 FROM python:3.12-slim AS base
+
+# OCI image labels — surface metadata on GHCR / Docker Hub package pages.
+LABEL org.opencontainers.image.title="Bastion Prompt Protection (CPU)"
+LABEL org.opencontainers.image.description="Self-hosted prompt-injection and jailbreak detector for LLM applications. CPU image with the Bastion Prompt Protection model and SDK baked in. ~5 ms p50 inference. Beats every open public baseline tested across four held-out benchmarks."
+LABEL org.opencontainers.image.vendor="Bastion Soft"
+LABEL org.opencontainers.image.source="https://github.com/bastion-soft/bastion-prompt-protection"
+LABEL org.opencontainers.image.documentation="https://github.com/bastion-soft/bastion-prompt-protection#readme"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

@@ -35,7 +35,7 @@ def safe_chat(user_msg: str) -> str:
 Multi-stage pipeline, each layer is cheaper than the next:
 
 1. **Heuristics** (~0.1 ms) — 12 regex rules + structural detectors (zero-width characters, base64 payloads, chat-template tokens). Catches obvious attacks without invoking the model. Sets `stage_reached = "heuristics"` when it short-circuits.
-2. **Binary classifier** (~5 ms warm) — DeBERTa-v3-xsmall fine-tune, ONNX-INT8 quantized, temperature-calibrated. Catches the subtle attacks heuristics miss. Sets `stage_reached = "binary"`.
+2. **Binary classifier** (~5 ms warm) — the [Bastion Prompt Protection model](https://huggingface.co/bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1) (DeBERTa-v3-xsmall fine-tune, 70M params), ONNX-INT8 quantized, temperature-calibrated. Catches the subtle attacks heuristics miss. Sets `stage_reached = "binary"`.
 
 The first call downloads the model from the Hugging Face Hub and caches it under `~/.cache/huggingface/`; subsequent calls are local.
 
@@ -67,7 +67,7 @@ Then optionally set `HF_HUB_OFFLINE=1` to forbid network access at runtime — u
 ## Other deployment options
 
 - **Raw ONNX without the SDK** — for compliance audits or non-Python ports
-- **Pre-built Docker image** — `docker pull ghcr.io/bastion-soft/bastion-server:latest`
+- **Pre-built Docker image** — `docker pull ghcr.io/bastion-soft/bastion-prompt-protection:latest`
 - **Self-run the benchmark suite** — verify the leaderboard numbers above
 
 All four patterns documented in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection#four-ways-to-use-it).
@@ -76,7 +76,7 @@ All four patterns documented in the [GitHub repo](https://github.com/bastion-sof
 
 - 📖 [GitHub](https://github.com/bastion-soft/bastion-prompt-protection) — source, examples, full docs
 - 🤗 [Model card](https://huggingface.co/bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1)
-- 🐳 [Docker images](https://github.com/bastion-soft/bastion-prompt-protection/pkgs/container/bastion-server)
+- 🐳 [Docker images](https://github.com/bastion-soft/bastion-prompt-protection/pkgs/container/bastion-prompt-protection)
 - 🐛 [Issues](https://github.com/bastion-soft/bastion-prompt-protection/issues)
 
 ## License

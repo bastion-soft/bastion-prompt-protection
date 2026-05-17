@@ -5,13 +5,21 @@
 # high-throughput workloads.
 #
 # Build locally:
-#     docker build -f docker/Dockerfile.gpu -t bastion-server:gpu .
+#     docker build -f docker/Dockerfile.gpu -t bastion-prompt-protection:gpu .
 #
 # Or pull the published image (built on every release tag):
-#     docker pull ghcr.io/bastion-soft/bastion-server:latest-gpu
-#     docker run --gpus all -p 8080:8080 ghcr.io/bastion-soft/bastion-server:latest-gpu
+#     docker pull ghcr.io/bastion-soft/bastion-prompt-protection:latest-gpu
+#     docker run --gpus all -p 8080:8080 ghcr.io/bastion-soft/bastion-prompt-protection:latest-gpu
 
 FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04 AS base
+
+# OCI image labels — surface metadata on GHCR / Docker Hub package pages.
+LABEL org.opencontainers.image.title="Bastion Prompt Protection (GPU)"
+LABEL org.opencontainers.image.description="Self-hosted prompt-injection and jailbreak detector for LLM applications. GPU image (CUDA 12.4 + onnxruntime-gpu) with the Bastion Prompt Protection model and SDK baked in, for high-throughput workloads. Beats every open public baseline tested across four held-out benchmarks."
+LABEL org.opencontainers.image.vendor="Bastion Soft"
+LABEL org.opencontainers.image.source="https://github.com/bastion-soft/bastion-prompt-protection"
+LABEL org.opencontainers.image.documentation="https://github.com/bastion-soft/bastion-prompt-protection#readme"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

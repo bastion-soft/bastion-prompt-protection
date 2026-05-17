@@ -30,20 +30,20 @@ uvicorn main:app --host 0.0.0.0 --port 8080
 ### Option B — Build the Docker image locally
 
 ```bash
-docker build -f docker/Dockerfile.cpu -t bastion-server:cpu .   # from repo root
-docker run -p 8080:8080 bastion-server:cpu
+docker build -f docker/Dockerfile.cpu -t bastion-prompt-protection:cpu .   # from repo root
+docker run -p 8080:8080 bastion-prompt-protection:cpu
 ```
 
 ### Option C — Pull the pre-built image (recommended for production)
 
 ```bash
-docker pull ghcr.io/bastion-soft/bastion-server:latest
-docker run -p 8080:8080 ghcr.io/bastion-soft/bastion-server:latest
+docker pull ghcr.io/bastion-soft/bastion-prompt-protection:latest
+docker run -p 8080:8080 ghcr.io/bastion-soft/bastion-prompt-protection:latest
 ```
 
-GPU variant: `ghcr.io/bastion-soft/bastion-server:latest-gpu` (requires `--gpus all`).
+GPU variant: `ghcr.io/bastion-soft/bastion-prompt-protection:latest-gpu` (requires `--gpus all`).
 
-Mirrored on Docker Hub: `bastionsoft/bastion-server:latest`.
+Mirrored on Docker Hub at `bastionsoft/bastion-prompt-protection:latest` (CPU) and `bastionsoft/bastion-prompt-protection:latest-gpu` (GPU).
 
 ## Expected output
 
