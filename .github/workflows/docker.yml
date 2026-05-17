@@ -115,14 +115,34 @@ jobs:
   # Push docker/README.md to Docker Hub as the project's full description.
   # Runs once after both flavors built successfully. Skipped silently if
   # Docker Hub creds aren't configured (GHCR-only deployments).
+  #
+  # Note on the conditional shape: GitHub Actions forbids `secrets.*` in
+  # job-level `if:` expressions, so we can't gate the whole job on a
+  # secret. Instead the job always runs but the upload step is gated on
+  # a step output that reads DOCKERHUB_USERNAME via `env:` — step-level
+  # contexts allow secrets and produce the same effect.
   update-dockerhub-description:
     name: update Docker Hub description
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ vars.HAS_DOCKERHUB == 'true' || secrets.DOCKERHUB_USERNAME != '' }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check Docker Hub credentials
+        id: check
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Docker Hub credentials not configured — skipping description push."
+            echo "(Set DOCKERHUB_USERNAME + DOCKERHUB_TOKEN repo secrets to enable.)"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Push README to Docker Hub
+        if: steps.check.outputs.configured == 'true'
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
