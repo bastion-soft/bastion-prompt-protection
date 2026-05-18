@@ -2,6 +2,33 @@
 
 All notable changes to Bastion Prompt Protection are documented here. The format is loosely based on [Keep a Changelog](https://keepachangelog.com); this project follows [Semantic Versioning](https://semver.org).
 
+## [1.1.0] — 2026-05-18
+
+**Real-traffic false positive fix.** The v1.0 classifier learned a shortcut feature — "short conversational prompt = suspicious" — and flagged benign messages like "Hello!" or "How are you doing?" at ~28% on real chat traffic. v1.1 retrains the corpus around this gap.
+
+### Changed
+
+- **Retrained model** — the [Bastion Prompt Protection model](https://huggingface.co/bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1) on Hugging Face has been overwritten with v1.1 weights at the same URL. Existing installs auto-fetch on next `Guard()` call.
+- **FPR on real chat traffic dropped from ~28% to 1.49% average** (WildChat 1.26%, LMSYS 1.72%), measured on 5000 held-out first-user turns per dataset.
+- **AUC essentially unchanged** on adversarial benchmarks: 0.984 average across rogue, xTRam1, S-Labs, JailbreakBench (was 0.986). Minor rogue regression (−1.1pp) is the expected trade-off for the FPR fix.
+- **Leaderboard table** in README now shows FPR table first (real-traffic story) and AUC second.
+
+### Added
+
+- `scripts/measure_false_positives.py` — multi-baseline FPR measurement on WildChat-1M and LMSYS-Chat-1M. Reservoir-sampled with seed=42, LMSYS gracefully warn-and-skips if the dataset is gated for the runner.
+- `eval/runners.py` — `TransformersRunner` now auto-loads `temperature.json` from the model repo if present. Bastion's published model ships one (calibrated probabilities); competitor baselines default to T=1.0 (no-op).
+- `eval/README.md` — rewritten as the canonical guide to both reproduction scripts (replacing the v1.0 leaderboard-only version).
+
+### Reproducibility
+
+- `python -m scripts.run_leaderboard` → `eval/results/leaderboard.json`
+- `python -m scripts.measure_false_positives` → `eval/results/false_positives.json`
+
+### Known limitations carried over from v1.0
+
+- English-only.
+- Single-turn classification; no state across turns.
+
 ## [1.0.0] — 2026-05-16
 
 First public release. `pip install bastion-prompt-protection` works today.

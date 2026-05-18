@@ -1,4 +1,4 @@
-"""Run bastion-tiny against open baselines on all held-out benchmarks.
+"""Run bastion-prompt-protection against open baselines on all held-out benchmarks.
 
 Produces a markdown leaderboard suitable for the README and HF model card.
 
@@ -37,7 +37,11 @@ logger = logging.getLogger(__name__)
 # attack_label_id may be int (single attack class) or list[int] (sum across
 # multiple attack classes — for multi-class detectors).
 BASELINES: list[tuple[str, str, int | list[int]]] = [
-    ("bastion-tiny (70M)", "bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1", 1),
+    (
+        "bastion-prompt-protection (70M)",
+        "bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1",
+        1,
+    ),
     ("protectai v2 (184M)", "protectai/deberta-v3-base-prompt-injection-v2", 1),
     ("deepset injection (184M)", "deepset/deberta-v3-base-injection", 1),
     ("hlyn judge (70M)", "hlyn-labs/prompt-injection-judge-deberta-70m", 1),

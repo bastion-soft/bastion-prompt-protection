@@ -39,17 +39,29 @@ Multi-stage pipeline, each layer is cheaper than the next:
 
 The first call downloads the model from the Hugging Face Hub and caches it under `~/.cache/huggingface/`; subsequent calls are local.
 
-## Held-out leaderboard
+## How it scores on adversarial benchmarks
 
 Four open prompt-injection detectors evaluated across four held-out benchmarks. Numbers reproducible via `python -m scripts.run_leaderboard` in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection).
 
 | Model | Params | Avg AUC | Avg F1 |
 |---|---:|---:|---:|
-| **bastion-prompt-protection** | 70M | **0.986** | **0.924** |
-| hlyn judge | 70M | 0.950 | 0.710 |
+| **bastion-prompt-protection** | 70M | **0.984** | **0.936** |
+| hlyn judge | 70M | 0.950 | 0.708 |
 | protectai v2 | 184M | 0.850 | 0.599 |
 | deepset injection | 184M | 0.766 | 0.696 |
 | meta prompt-guard | 86M | 0.298 | 0.594 |
+
+## How it scores on real traffic
+
+**False positive rate** = % of benign user prompts wrongly flagged as attacks. Measured on 5000 first-user turns sampled from real chat data (WildChat-1M and LMSYS-Chat-1M). Numbers reproducible via `python -m scripts.measure_false_positives` in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection).
+
+| Model | Params | WildChat | LMSYS | **Avg** |
+|---|---:|---:|---:|---:|
+| **bastion-prompt-protection** | 70M | **1.26%** | **1.72%** | **1.49%** |
+| protectai v2 | 184M | 7.60% | 10.04% | 8.82% |
+| hlyn judge | 70M | 22.76% | 20.30% | 21.53% |
+| deepset injection | 184M | 67.20% | 64.58% | 65.89% |
+| meta prompt-guard | 86M | 85.60% | 91.00% | 88.30% |
 
 ## Configuration
 
@@ -68,7 +80,7 @@ Then optionally set `HF_HUB_OFFLINE=1` to forbid network access at runtime — u
 
 - **Raw ONNX without the SDK** — for compliance audits or non-Python ports
 - **Pre-built Docker image** — `docker pull ghcr.io/bastion-soft/bastion-prompt-protection:latest`
-- **Self-run the benchmark suite** — verify the leaderboard numbers above
+- **Self-run the benchmark + FPR suite** — verify the numbers above
 
 All four patterns documented in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection#four-ways-to-use-it).
 
