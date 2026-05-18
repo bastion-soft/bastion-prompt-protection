@@ -63,7 +63,7 @@ curl -X POST localhost:8080/protect \
   "matched_rules": ["ignore_previous", "system_prompt_leak"],
   "stage_reached": "heuristics",
   "latency_ms": 0.1,
-  "model_version": "1.0.0"
+  "model_version": "1.1.0"
 }
 ```
 

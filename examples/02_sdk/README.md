@@ -44,7 +44,7 @@ Subsequent runs start in under 2 seconds — the model is cached under
 ## Expected output
 
 ```
-bastion-prompt-protection v1.0.0
+bastion-prompt-protection v1.1.0
 Loading Guard — model downloads on the first protect() call
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
