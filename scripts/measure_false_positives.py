@@ -1,0 +1,385 @@
+"""Measure false-positive rate on real-world benign chat distributions.
+
+In production, the metric that decides whether a prompt-injection detector
+is deployable is **not** how well it catches attacks — it's how often it
+incorrectly flags real user prompts as attacks. Every false positive is a
+legitimate user whose message got blocked.
+
+This script scores `bastion-prompt-protection` plus four published
+open-source baselines against held-out real-chatbot benigns, reports
+the false-positive rate at threshold=0.5, and writes a reproducible
+artifact at `eval/results/false_positives.json`.
+
+Datasets (both held-out from training):
+  - WildChat openers     — first user turn from non-toxic conversations
+                           in `allenai/WildChat-1M`
+  - LMSYS-Chat openers   — first user turn from `lmsys/lmsys-chat-1m`
+                           (gated; warn-and-skip if no access)
+
+Usage:
+    pip install -e ".[eval]"
+    huggingface-cli login          # optional but needed for LMSYS access
+    python -m scripts.measure_false_positives
+
+    # Run only a single baseline
+    python -m scripts.measure_false_positives \\
+        --runner bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1
+
+    # Use a smaller sample for a quick smoke run
+    python -m scripts.measure_false_positives --n 500
+
+Output:
+    eval/results/false_positives.json   — full per-(model, dataset) rows
+    stdout                              — human-readable table
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import random
+import statistics
+import sys
+import time
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
+from eval.runners import TransformersRunner
+
+logger = logging.getLogger(__name__)
+
+
+# (display_name, hf_model_id, attack_label_id_or_indices)
+# Order matters: bastion first so the human-readable table reads bastion-vs-field.
+BASELINES: list[tuple[str, str, int | list[int]]] = [
+    (
+        "bastion-prompt-protection (70M)",
+        "bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1",
+        1,
+    ),
+    ("hlyn judge (70M)", "hlyn-labs/prompt-injection-judge-deberta-70m", 1),
+    ("protectai v2 (184M)", "protectai/deberta-v3-base-prompt-injection-v2", 1),
+    ("deepset injection (184M)", "deepset/deberta-v3-base-injection", 1),
+    # Meta Prompt-Guard is 3-class (0=BENIGN, 1=INJECTION, 2=JAILBREAK).
+    # Both 1 and 2 count as "attack" in our binary frame — sum their probs.
+    # Requires HF gated-access approval at:
+    #   https://huggingface.co/meta-llama/Prompt-Guard-86M
+    ("meta prompt-guard (86M)", "meta-llama/Prompt-Guard-86M", [1, 2]),
+]
+
+
+# Deterministic sampling — same seed used by the training-side helper that
+# excludes these exact prompts from training corpora that source from
+# WildChat / LMSYS. Anyone running this script gets the same 5000 prompts.
+FPR_EVAL_SEED = 42
+DEFAULT_N = 5000
+DEFAULT_DATASETS = ["wildchat", "lmsys"]
+
+
+@dataclass
+class FPRRow:
+    """One row in the output JSON — FPR for one (model, dataset) pair."""
+
+    runner: str
+    dataset: str
+    n_samples: int
+    n_classified_attack: int
+    fpr: float
+    mean_risk: float
+    median_risk: float
+    p95_risk: float
+    risk_band_safe: int  # samples in [0.00, 0.20)
+    risk_band_uncertain: int  # samples in [0.20, 0.85)
+    risk_band_attack: int  # samples in [0.85, 1.00]
+    wall_seconds: float
+
+
+# ────────────────────────────────────────────────────────────────────────
+# Dataset loaders
+# ────────────────────────────────────────────────────────────────────────
+
+
+def _stream_first_user_turns(repo_id: str, n: int) -> list[str]:
+    """Reservoir-sample n first-user-turn prompts from a streaming HF dataset.
+
+    Mirrors the training-side eval-holdout helper exactly: same seed, same
+    filters, same reservoir logic — so the same 5000 prompts are pulled
+    deterministically across runs and can be excluded from training
+    corpora that source from these datasets.
+    """
+    from datasets import load_dataset
+
+    rng = random.Random(FPR_EVAL_SEED)
+    ds = load_dataset(repo_id, split="train", streaming=True)
+    out: list[str] = []
+    for row in ds:
+        # WildChat-1M tags conversations with `toxic`; LMSYS doesn't.
+        if row.get("toxic"):
+            continue
+        conv = row.get("conversation") or []
+        if not conv or conv[0].get("role") != "user":
+            continue
+        content = (conv[0].get("content") or "").strip()
+        if not content or len(content) < 2 or len(content) > 4000:
+            continue
+        if len(out) < n:
+            out.append(content)
+        else:
+            idx = rng.randint(0, 2 * len(out))
+            if idx < n:
+                out[idx] = content
+        if len(out) >= n and rng.random() > 0.99:
+            break
+    return out
+
+
+def load_wildchat(n: int) -> list[str] | None:
+    """Pull n first-user-turns from non-toxic WildChat-1M conversations."""
+    try:
+        prompts = _stream_first_user_turns("allenai/WildChat-1M", n)
+    except Exception as exc:
+        logger.warning("WildChat load failed: %s", exc)
+        return None
+    if not prompts:
+        logger.warning("WildChat returned 0 usable prompts — schema may have changed")
+        return None
+    return prompts
+
+
+def load_lmsys(n: int) -> list[str] | None:
+    """Pull n first-user-turns from LMSYS-Chat-1M.
+
+    Gated dataset — requires:
+      1. License acceptance at https://huggingface.co/datasets/lmsys/lmsys-chat-1m
+      2. `huggingface-cli login` with a token that has gated-repo read access
+
+    Skipped cleanly if the caller doesn't have access.
+    """
+    try:
+        prompts = _stream_first_user_turns("lmsys/lmsys-chat-1m", n)
+    except Exception as exc:
+        msg = str(exc).lower()
+        if any(t in msg for t in ("gated", "401", "403", "not authorized")):
+            logger.warning(
+                "LMSYS-Chat-1M is gated — skipping. To include it:\n"
+                "  1. accept the license at https://huggingface.co/datasets/lmsys/lmsys-chat-1m\n"
+                "  2. run `huggingface-cli login` with a token that has gated-repo read access"
+            )
+        else:
+            logger.warning("LMSYS load failed: %s", exc)
+        return None
+    if not prompts:
+        logger.warning("LMSYS returned 0 usable prompts")
+        return None
+    return prompts
+
+
+DATASET_LOADERS = {
+    "wildchat": load_wildchat,
+    "lmsys": load_lmsys,
+}
+
+
+# ────────────────────────────────────────────────────────────────────────
+# Scoring
+# ────────────────────────────────────────────────────────────────────────
+
+
+def score(runner: TransformersRunner, prompts: list[str], dataset_name: str) -> FPRRow:
+    """Score one (runner, dataset) pair, return the FPR row."""
+    t0 = time.perf_counter()
+    output = runner.score_batch(prompts)
+    elapsed = time.perf_counter() - t0
+    risks = output.scores
+
+    n = len(risks)
+    n_attack = sum(1 for r in risks if r >= 0.5)
+
+    def in_band(lo: float, hi: float) -> int:
+        return sum(1 for r in risks if lo <= r < hi)
+
+    fpr = n_attack / n if n else 0.0
+    logger.info(
+        "    %-12s  FPR=%5.2f%%  (%d/%d)  mean=%.3f  p95=%.3f  [%.1fs]",
+        dataset_name,
+        100 * fpr,
+        n_attack,
+        n,
+        statistics.mean(risks) if risks else 0.0,
+        sorted(risks)[int(0.95 * n)] if n >= 20 else 0.0,
+        elapsed,
+    )
+
+    return FPRRow(
+        runner=runner.name,
+        dataset=dataset_name,
+        n_samples=n,
+        n_classified_attack=n_attack,
+        fpr=fpr,
+        mean_risk=statistics.mean(risks) if risks else 0.0,
+        median_risk=statistics.median(risks) if risks else 0.0,
+        p95_risk=sorted(risks)[int(0.95 * n)] if n >= 20 else max(risks, default=0.0),
+        risk_band_safe=in_band(0.0, 0.20),
+        risk_band_uncertain=in_band(0.20, 0.85),
+        risk_band_attack=in_band(0.85, 1.0001),
+        wall_seconds=elapsed,
+    )
+
+
+# ────────────────────────────────────────────────────────────────────────
+# Reporting
+# ────────────────────────────────────────────────────────────────────────
+
+
+def print_report(rows: list[FPRRow]) -> None:
+    """Human-readable FPR table — one row per model, one column per dataset."""
+    by_runner: dict[str, dict[str, FPRRow]] = {}
+    for row in rows:
+        by_runner.setdefault(row.runner, {})[row.dataset] = row
+
+    datasets = sorted({r.dataset for r in rows})
+    runners_in_order: list[str] = []
+    seen: set[str] = set()
+    for r in rows:
+        if r.runner not in seen:
+            runners_in_order.append(r.runner)
+            seen.add(r.runner)
+
+    print()
+    print("═" * 80)
+    print("  False-positive rate at threshold=0.5  (lower is better)")
+    print("═" * 80)
+    print(f"  {'Model':<36s}  " + "  ".join(f"{d:>12s}" for d in datasets))
+    print("  " + "─" * (36 + 2 + 14 * len(datasets)))
+
+    for runner_name in runners_in_order:
+        cells: list[str] = []
+        for d in datasets:
+            row = by_runner.get(runner_name, {}).get(d)
+            cells.append(f"{row.fpr * 100:>11.2f}%" if row else "          —")
+        print(f"  {runner_name:<36s}  " + "  ".join(cells))
+
+    print()
+
+
+# ────────────────────────────────────────────────────────────────────────
+# Main
+# ────────────────────────────────────────────────────────────────────────
+
+
+def main() -> int:
+    args = _parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    print("Bastion Prompt Protection — false-positive rate evaluation")
+    print(f"Samples per dataset: {args.n}  |  threshold: 0.5\n")
+
+    # 1. Load benign datasets ONCE; reuse across all baselines.
+    print("Loading benign datasets...")
+    datasets: dict[str, list[str]] = {}
+    for dataset_name in args.datasets:
+        loader = DATASET_LOADERS.get(dataset_name)
+        if not loader:
+            logger.warning("unknown dataset: %s — skipping", dataset_name)
+            continue
+        prompts = loader(args.n)
+        if prompts:
+            datasets[dataset_name] = prompts
+            print(f"  ✓ {dataset_name}: {len(prompts)} prompts")
+
+    if not datasets:
+        logger.error("no datasets loaded — nothing to score")
+        return 1
+
+    # 2. Filter baselines by --runner if provided.
+    if args.runner:
+        wanted = set(args.runner)
+        baselines = [b for b in BASELINES if b[1] in wanted]
+        if not baselines:
+            logger.error("no baseline matched --runner. Known repo ids:")
+            for _, repo_id, _ in BASELINES:
+                logger.error("  %s", repo_id)
+            return 1
+    else:
+        baselines = BASELINES
+
+    print(
+        f"\nFirst run will download {len(baselines)} baseline model(s) from HuggingFace "
+        f"(~600 MB total — please wait).\n"
+    )
+
+    # 3. Score every (baseline, dataset) pair.
+    rows: list[FPRRow] = []
+    for i, (display, model_id, attack_label) in enumerate(baselines, start=1):
+        print(f"[{i}/{len(baselines)}] {display}")
+        print(f"   loading {model_id} ...")
+        try:
+            runner = TransformersRunner(
+                model_id=model_id,
+                attack_label_id=attack_label,
+                max_length=512,
+                batch_size=args.batch_size,
+                name=display,
+            )
+        except Exception as exc:
+            logger.warning("   ✗ skip (%s): %s", type(exc).__name__, str(exc)[:200])
+            continue
+
+        for dataset_name, prompts in datasets.items():
+            try:
+                rows.append(score(runner, prompts, dataset_name))
+            except Exception as exc:
+                logger.warning("   ✗ %s on %s failed: %s", display, dataset_name, str(exc)[:200])
+
+    if not rows:
+        logger.error("no rows produced — every baseline failed to score")
+        return 1
+
+    # 4. Print the table.
+    print_report(rows)
+
+    # 5. Write the JSON artifact.
+    out_path = Path(args.output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": 1,
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "threshold": 0.5,
+        "samples_per_dataset": {k: len(v) for k, v in datasets.items()},
+        "rows": [asdict(r) for r in rows],
+    }
+    out_path.write_text(json.dumps(payload, indent=2))
+    print(f"✓ Wrote {out_path}")
+    return 0
+
+
+def _parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(prog="scripts.measure_false_positives")
+    p.add_argument(
+        "--n",
+        type=int,
+        default=DEFAULT_N,
+        help=f"Samples per dataset. Default: {DEFAULT_N}.",
+    )
+    p.add_argument(
+        "--datasets",
+        nargs="+",
+        default=DEFAULT_DATASETS,
+        choices=list(DATASET_LOADERS),
+        help=f"Datasets to evaluate. Default: {' '.join(DEFAULT_DATASETS)}.",
+    )
+    p.add_argument(
+        "--runner",
+        action="append",
+        default=[],
+        help="Filter to specific baseline(s) by HF repo id. Repeat for multiple. "
+        "Default: run all baselines in BASELINES.",
+    )
+    p.add_argument("--batch-size", type=int, default=32)
+    p.add_argument("--output", default="eval/results/false_positives.json")
+    return p.parse_args()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

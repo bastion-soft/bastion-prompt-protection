@@ -88,6 +88,11 @@ class TransformersRunner:
             self.model.config.pad_token_id = self.tokenizer.pad_token_id
         self.model.eval()
 
+        # Auto-load temperature scalar if the model repo ships `temperature.json`.
+        # Bastion's published models include this for calibrated probability output;
+        # competitor models typically don't and default to identity (no-op).
+        self.temperature = _load_temperature(model_id)
+
     def score_batch(self, texts: list[str]) -> RunnerOutput:
         import torch  # type: ignore[import-not-found]
 
@@ -104,7 +109,7 @@ class TransformersRunner:
                 return_tensors="pt",
             ).to(self.device)
             with torch.no_grad():
-                logits = self.model(**enc).logits
+                logits = self.model(**enc).logits / self.temperature
             probs = torch.softmax(logits, dim=-1)
             if isinstance(self.attack_label_id, list):
                 attack_probs = probs[:, self.attack_label_id].sum(dim=-1).cpu().tolist()
@@ -122,3 +127,23 @@ class TransformersRunner:
 def _chunks(items: list[str], size: int) -> Iterable[list[str]]:
     for i in range(0, len(items), size):
         yield items[i : i + size]
+
+
+def _load_temperature(model_id: str) -> float:
+    """Try to fetch `temperature.json` from a HuggingFace model repo.
+
+    Returns the temperature scalar if present, else 1.0 (identity — no
+    calibration applied). Logits are divided by this value before softmax.
+
+    The published bastion-prompt-protection model ships a fitted temperature.
+    Competing detectors typically don't ship one.
+    """
+    import json
+
+    try:
+        from huggingface_hub import hf_hub_download
+
+        path = hf_hub_download(repo_id=model_id, filename="temperature.json")
+        return float(json.loads(open(path).read())["temperature"])
+    except Exception:
+        return 1.0
