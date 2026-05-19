@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from bastion_prompt_protection.config import GuardConfig, Preset
 from bastion_prompt_protection.stages.binary import BinaryStage
-from bastion_prompt_protection.stages.heuristics import HeuristicResult, HeuristicsStage
-from bastion_prompt_protection.stages.multiclass import MulticlassStage
+from bastion_prompt_protection.stages.heuristics import HeuristicsStage
 from bastion_prompt_protection.version import __version__
 
 LABEL_SAFE = "safe"
@@ -15,19 +14,14 @@ LABEL_ATTACK = "attack"
 
 STAGE_HEURISTICS = "heuristics"
 STAGE_BINARY = "binary"
-STAGE_MULTICLASS = "multiclass"
 
 
 @dataclass
 class GuardResult:
     risk: float
     label: str
-    injection_type: str | None = None
-    type_scores: dict[str, float] = field(default_factory=dict)
-    matched_rules: list[str] = field(default_factory=list)
     stage_reached: str = STAGE_HEURISTICS
     latency_ms: float = 0.0
-    model_version: str = __version__
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -51,27 +45,34 @@ class Guard:
             if self.config.enable_binary
             else None
         )
-        self._multiclass = (
-            MulticlassStage(self.config.model_id("multiclass"), cache_dir=self.config.cache_dir)
-            if self.config.enable_multiclass
-            else None
-        )
+
+    @property
+    def sdk_version(self) -> str:
+        """The bastion-prompt-protection package version."""
+        return __version__
+
+    @property
+    def model_version(self) -> str | None:
+        """Identifier for the currently loaded model build (7-char commit
+        SHA of the HuggingFace snapshot under the hood). Returns `None`
+        if the model hasn't been loaded yet — lazy load triggers on the
+        first `protect()` call — or if the binary stage is disabled.
+        Useful for audit logs and bug reports."""
+        if self._binary is None:
+            return None
+        return self._binary.model_version
 
     def protect(self, prompt: str) -> GuardResult:
         start = time.perf_counter()
         text = (prompt or "")[: self.config.max_input_chars]
 
-        heuristic_result = (
-            self._heuristics.run(text) if self._heuristics is not None else HeuristicResult()
-        )
+        heuristic_score = self._heuristics.run(text) if self._heuristics is not None else 0.0
 
-        if heuristic_result.score >= self.config.thresholds.heuristic_short_circuit:
+        if heuristic_score >= self.config.thresholds.heuristic_short_circuit:
             return self._finalize(
-                risk=heuristic_result.score,
-                heuristic=heuristic_result,
+                risk=heuristic_score,
                 stage_reached=STAGE_HEURISTICS,
                 start=start,
-                inferred_type=heuristic_result.inferred_type,
             )
 
         binary_risk = 0.0
@@ -82,59 +83,27 @@ class Guard:
                 binary_risk = pred.risk
                 binary_available = True
 
-        risk = max(heuristic_result.score, binary_risk)
+        risk = max(heuristic_score, binary_risk)
         stage_reached = STAGE_BINARY if binary_available else STAGE_HEURISTICS
-
-        if risk < self.config.thresholds.safe_below:
-            return self._finalize(
-                risk=risk,
-                heuristic=heuristic_result,
-                stage_reached=stage_reached,
-                start=start,
-                inferred_type=heuristic_result.inferred_type,
-            )
-
-        type_scores: dict[str, float] = {}
-        inferred_type: str | None = heuristic_result.inferred_type
-
-        should_type = self._multiclass is not None and risk >= self.config.thresholds.safe_below
-        if should_type:
-            mc = self._multiclass.predict(text)  # type: ignore[union-attr]
-            if mc.available:
-                type_scores = mc.type_scores
-                inferred_type = mc.inferred_type or inferred_type
-                stage_reached = STAGE_MULTICLASS
 
         return self._finalize(
             risk=risk,
-            heuristic=heuristic_result,
             stage_reached=stage_reached,
             start=start,
-            inferred_type=inferred_type,
-            type_scores=type_scores,
         )
 
     def _finalize(
         self,
         *,
         risk: float,
-        heuristic: HeuristicResult,
         stage_reached: str,
         start: float,
-        inferred_type: str | None = None,
-        type_scores: dict[str, float] | None = None,
     ) -> GuardResult:
         label = LABEL_ATTACK if risk >= self.config.thresholds.attack_above else LABEL_SAFE
-        if label == LABEL_SAFE and risk < self.config.thresholds.safe_below:
-            inferred_type = None
-
         latency_ms = (time.perf_counter() - start) * 1000.0
         return GuardResult(
             risk=round(risk, 4),
             label=label,
-            injection_type=inferred_type if label == LABEL_ATTACK else None,
-            type_scores=type_scores or {},
-            matched_rules=heuristic.matched_rule_ids,
             stage_reached=stage_reached,
             latency_ms=round(latency_ms, 3),
         )

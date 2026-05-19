@@ -36,10 +36,11 @@ r = guard.protect(prompt)
 print(f"  prompt        : {prompt!r}")
 print(f"  risk          : {r.risk:.3f}")
 print(f"  label         : {r.label}")
-print(f"  injection_type: {r.injection_type!r}")
-print(f"  matched_rules : {r.matched_rules}")
 print(f"  stage_reached : {r.stage_reached}")
 print(f"  latency_ms    : {r.latency_ms:.2f}")
+print()
+print(f"  guard.sdk_version   : {guard.sdk_version}")
+print(f"  guard.model_version : {guard.model_version}  (model build identifier)")
 
 
 # ────────────────────────────────────────────────────────────────────────
@@ -54,7 +55,7 @@ def fake_llm(msg: str) -> str:
 def safe_chat(msg: str, threshold: float = 0.5) -> str:
     result = guard.protect(msg)
     if result.risk >= threshold:
-        return f"⛔ Blocked ({result.label}, risk={result.risk:.2f}, type={result.injection_type})"
+        return f"⛔ Blocked ({result.label}, risk={result.risk:.2f}, stage={result.stage_reached})"
     return fake_llm(msg)
 
 

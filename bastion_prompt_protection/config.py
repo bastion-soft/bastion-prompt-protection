@@ -5,26 +5,16 @@ from enum import Enum
 
 
 class Preset(str, Enum):
-    TINY = "tiny"  # DeBERTa-v3-xsmall (22M) — published as v1.0
-    FAST = "fast"  # DeBERTa-v3-small (44M) — coming in v1.1
-    ACCURATE = "accurate"  # DeBERTa-v3-base (180M) — coming in v1.1
+    # The only published preset. DeBERTa-v3-xsmall fine-tune, 70M params,
+    # ONNX-INT8 quantized — see model card on Hugging Face.
+    TINY = "tiny"
 
 
 # Model registry. Keys map to HuggingFace repos that we publish; the SDK
-# downloads weights on first use and caches them. Only the TINY repo is
-# populated at v1.0; FAST / ACCURATE follow once the larger backbones train.
+# downloads weights on first use and caches them.
 MODEL_REGISTRY: dict[str, dict[str, str]] = {
     Preset.TINY.value: {
         "binary": "bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1",
-        "multiclass": "bastionsoft/multiclass-bastion-prompt-protection-deberta-v3-xsmall-v1",
-    },
-    Preset.FAST.value: {
-        "binary": "bastionsoft/binary-bastion-prompt-protection-deberta-v3-small-v1",
-        "multiclass": "bastionsoft/multiclass-bastion-prompt-protection-deberta-v3-small-v1",
-    },
-    Preset.ACCURATE.value: {
-        "binary": "bastionsoft/binary-bastion-prompt-protection-deberta-v3-base-v1",
-        "multiclass": "bastionsoft/multiclass-bastion-prompt-protection-deberta-v3-base-v1",
     },
 }
 
@@ -32,7 +22,7 @@ MODEL_REGISTRY: dict[str, dict[str, str]] = {
 @dataclass(frozen=True)
 class Thresholds:
     safe_below: float = 0.20
-    attack_above: float = 0.85
+    attack_above: float = 0.50
     heuristic_short_circuit: float = 0.95
 
 
@@ -43,7 +33,6 @@ class GuardConfig:
 
     enable_heuristics: bool = True
     enable_binary: bool = True
-    enable_multiclass: bool = False  # multiclass typer ships in v2.0
     enable_llm_judge: bool = False
 
     max_input_chars: int = 8000

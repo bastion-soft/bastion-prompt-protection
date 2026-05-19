@@ -36,6 +36,16 @@ class BinaryStage:
     def is_available(self) -> bool:
         return self._loader.is_available()
 
+    @property
+    def model_version(self) -> str | None:
+        """Identifier for the currently loaded model build (7-char prefix
+        of the HuggingFace snapshot commit SHA). Returns `None` if the
+        model hasn't been loaded yet; does not trigger loading."""
+        sha = self._loader.revision
+        if sha is None:
+            return None
+        return sha[:7]
+
     def predict(self, text: str) -> BinaryPrediction:
         if not self.is_available():
             return BinaryPrediction(risk=NEUTRAL_RISK, available=False)

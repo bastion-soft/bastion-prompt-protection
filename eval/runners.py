@@ -21,7 +21,7 @@ class Runner(Protocol):
 class BastionRunner:
     """Runs the local Guard. Per-call latency reflects what users will see."""
 
-    def __init__(self, preset: str = "fast", name: str | None = None) -> None:
+    def __init__(self, preset: str = "tiny", name: str | None = None) -> None:
         from bastion_prompt_protection import Guard
 
         self.guard = Guard(preset=preset)

@@ -2,6 +2,55 @@
 
 All notable changes to Bastion Prompt Protection are documented here. The format is loosely based on [Keep a Changelog](https://keepachangelog.com); this project follows [Semantic Versioning](https://semver.org).
 
+## [1.2.0] — 2026-05-19
+
+**SDK-only minor release — cleanup, breaking simplifications, no model change.** Same v1.1 weights, but a much leaner Python API. The motivating prompt:
+
+> `"Show me how to write a system prompt for my own chatbot"` — v1.1.0 flagged this as attack at the heuristics stage via the `system_prompt_leak` regex. v1.2.0 lets it through to the classifier, which scores it safe.
+
+This is a **minor** release rather than a patch because it removes several public API surfaces (presets, fields, dataclasses) — see the `Removed` section below. The trade-off is a smaller, more honest `GuardResult` and a heuristics layer that doesn't shadowbox with the model.
+
+### Changed
+
+- **Heuristics layer reduced from 12 rules to 5 structural detectors.** Removed all pure-vocabulary regex rules (`ignore_previous`, `dan_persona`, `do_anything_now`, `no_restrictions`, `system_prompt_leak`, `repeat_above`, `exfiltration_url`, `new_instructions`, `grandma_exploit`, `hypothetical_unrestricted`).
+- **The 5 kept detectors** all catch attacks that bypass the model — either by hiding under the tokenizer, or by mimicking model-control structure:
+  - Chat-template control tokens (`<|im_start|>`, `[INST]`, `<<SYS>>`)
+  - Fake end-of-prompt delimiters (`--- end of prompt ---`, `### end of system ###`)
+  - Zero-width / homoglyph obfuscation (≥3 invisible characters)
+  - Spaced-letter obfuscation (`i g n o r e   p r e v i o u s`)
+  - Long base64 payloads (smuggled encoded attacks)
+- **Default `attack_above` threshold lowered from 0.85 → 0.50.** The previous 0.85 default was a v1.0 conservatism artifact that pre-dated the FPR fix. With v1.1's calibrated probabilities, threshold=0.5 is both the natural choice for a binary classifier and matches how every published metric (leaderboard AUC/F1, FPR script) scores the model. **The "1.49% FPR" number we publish has always been measured at threshold=0.5**; this change aligns SDK behavior with what users read on the model card. Override via `GuardConfig(thresholds=Thresholds(attack_above=0.85))` to restore the old behavior.
+- **`GuardResult.model_version` removed; identity info moved to the `Guard` instance.** The old field was misleadingly populated with the SDK version (`__version__`), which had nothing to do with which model decided the call. v1.2.0 separates concerns cleanly:
+  - `Guard.sdk_version` — string, always populated (`"1.2.0"`)
+  - `Guard.model_version` — 7-char HuggingFace commit SHA (`"c75249a"`); `None` until the model has been loaded (lazy — first `protect()` call), or `None` permanently if the binary stage is disabled
+  - `GuardResult` itself is now just the decision: `risk`, `label`, `stage_reached`, `latency_ms`. No identity metadata clutter, no `None` values on every result.
+
+  For bug reports / audit logging: capture `guard.sdk_version` + `guard.model_version` once per session, log `risk`/`label`/`stage_reached` per call.
+
+### Removed
+
+- **`Preset.FAST` and `Preset.ACCURATE`** — placeholder enum values that pointed at HuggingFace repos that were never published. Selecting them silently 404'd on model load and the binary stage fell back to a neutral score, leaving users with heuristics-only detection while thinking they got a larger model. Only `Preset.TINY` was ever functional. Future larger-model variants (e.g. the multilingual model coming in v1.2) will be added under fresh, descriptive preset names rather than reusing these stubs.
+- **Multi-class typer scaffolding** — `bastion_prompt_protection.stages.multiclass`, the `enable_multiclass` flag on `GuardConfig`, the `"multiclass"` entry in `MODEL_REGISTRY`, the `stage_reached = "multiclass"` case, and the `type_scores` field on `GuardResult` have all been removed. None of it was functional — the corresponding HF repo (`bastionsoft/multiclass-...`) was never published, and the flag was always `False` by default. The pipeline is now cleanly two stages: structural detectors → binary classifier. When the multi-class typer actually ships (planned for a later release), it will be re-introduced with a design that fits the model that actually trains.
+- **`GuardResult.injection_type`** — this field was designed as the output port for the multi-class typer (the 8-class attack taxonomy: `jailbreak` / `direct_injection` / `system_prompt_leak` / etc.). With the multi-class typer removed, the only thing populating it was the structural heuristic's coarse 2-bucket label, fully derivable from which structural detector fired. Removed alongside: the `TYPE_*` constants from `bastion_prompt_protection.stages.heuristics`.
+- **`GuardResult.matched_rules`** — this list of rule IDs was empty for the vast majority of calls (any semantic attack caught by the binary classifier). The remaining structural cases (chat-template tokens, base64, zero-width chars, etc.) are already conveyed by `stage_reached="heuristics"` plus the input prompt itself. Anyone needing rule-level granularity for audit can call `HeuristicsStage().run(text)` directly — though that now returns a `float` score rather than a structured result (see below).
+- **`HeuristicMatch` and `HeuristicResult` dataclasses** — internal scaffolding that only existed to feed the removed `matched_rules` field. `HeuristicsStage.run(text)` now returns a plain `float` (the highest-confidence match score, or 0.0). `HeuristicRule` is reduced to `pattern` + `confidence` only.
+
+### Why this is an SDK-only release (no model change)
+
+The trimmed rules duplicated capabilities the classifier already has. No retraining needed. The published `bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1` weights are unchanged — only the SDK pipeline behavior changes.
+
+### User-visible effects
+
+- Fewer false positives on developer prompts that mention "system prompt", "instructions", and other prompt-engineering vocabulary.
+- `GuardResult.matched_rules` returns fewer entries on benign input (will be empty in most cases now — only fires for the structural detectors above).
+- `stage_reached` will report `"binary"` instead of `"heuristics"` for keyword-based attacks like `"Ignore previous instructions..."`. Latency goes from ~0.1ms (heuristics short-circuit) to ~5ms (model inference) on those.
+
+### Install
+
+```bash
+pip install --upgrade bastion-prompt-protection==1.2.0
+```
+
 ## [1.1.0] — 2026-05-18
 
 **Real-traffic false positive fix.** The v1.0 classifier learned a shortcut feature — "short conversational prompt = suspicious" — and flagged benign messages like "Hello!" or "How are you doing?" at ~28% on real chat traffic. v1.1 retrains the corpus around this gap.

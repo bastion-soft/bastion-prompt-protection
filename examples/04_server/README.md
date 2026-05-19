@@ -57,13 +57,10 @@ curl -X POST localhost:8080/protect \
 
 ```json
 {
-  "risk": 0.97,
+  "risk": 0.99,
   "label": "attack",
-  "injection_type": "system_prompt_leak",
-  "matched_rules": ["ignore_previous", "system_prompt_leak"],
-  "stage_reached": "heuristics",
-  "latency_ms": 0.1,
-  "model_version": "1.1.0"
+  "stage_reached": "binary",
+  "latency_ms": 5.2
 }
 ```
 

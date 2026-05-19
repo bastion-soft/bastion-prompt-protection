@@ -67,11 +67,8 @@ class ProtectRequest(BaseModel):
 class ProtectResponse(BaseModel):
     risk: float = Field(..., ge=0.0, le=1.0)
     label: str  # "safe" | "attack"
-    injection_type: str | None
-    matched_rules: list[str]
-    stage_reached: str  # "heuristics" | "binary" | "multiclass"
+    stage_reached: str  # "heuristics" | "binary"
     latency_ms: float
-    model_version: str
 
 
 # ────────────────────────────────────────────────────────────────────────
@@ -105,11 +102,8 @@ async def protect(req: ProtectRequest) -> ProtectResponse:
     return ProtectResponse(
         risk=result.risk,
         label=result.label,
-        injection_type=result.injection_type,
-        matched_rules=result.matched_rules,
         stage_reached=result.stage_reached,
         latency_ms=result.latency_ms,
-        model_version=result.model_version,
     )
 
 

@@ -26,13 +26,10 @@ curl -X POST localhost:8080/protect \
 
 ```json
 {
-  "risk": 0.97,
+  "risk": 0.99,
   "label": "attack",
-  "injection_type": "system_prompt_leak",
-  "matched_rules": ["ignore_previous", "system_prompt_leak"],
-  "stage_reached": "heuristics",
-  "latency_ms": 0.1,
-  "model_version": "1.1.0"
+  "stage_reached": "binary",
+  "latency_ms": 5.2
 }
 ```
 
@@ -53,7 +50,7 @@ Non-root user (`bastion`, UID 10001) and a Docker `HEALTHCHECK` are included by 
 
 ## What's inside
 
-The image runs a FastAPI microservice that exposes the [`bastion-prompt-protection`](https://pypi.org/project/bastion-prompt-protection/) Python SDK over HTTP. The SDK's multi-stage detector — heuristic regex rules → temperature-calibrated binary classifier — runs on every request and returns a `risk`, `label`, and `injection_type`. Source for the FastAPI app is in [`examples/04_server/main.py`](https://github.com/bastion-soft/bastion-prompt-protection/tree/main/examples/04_server); reproduce the leaderboard locally with [`scripts/run_leaderboard.py`](https://github.com/bastion-soft/bastion-prompt-protection/blob/main/scripts/run_leaderboard.py).
+The image runs a FastAPI microservice that exposes the [`bastion-prompt-protection`](https://pypi.org/project/bastion-prompt-protection/) Python SDK over HTTP. The SDK's two-stage detector — structural detectors → temperature-calibrated binary classifier — runs on every request and returns a `risk`, `label`, and `stage_reached`. Source for the FastAPI app is in [`examples/04_server/main.py`](https://github.com/bastion-soft/bastion-prompt-protection/tree/main/examples/04_server); reproduce the leaderboard locally with [`scripts/run_leaderboard.py`](https://github.com/bastion-soft/bastion-prompt-protection/blob/main/scripts/run_leaderboard.py).
 
 ## Production notes
 

@@ -54,6 +54,15 @@ class OnnxModelLoader:
         assert self._artifact is not None
         return self._artifact
 
+    @property
+    def revision(self) -> str | None:
+        """HF commit SHA the loaded snapshot was resolved to, or None if the
+        model hasn't been loaded yet. Does NOT trigger loading."""
+        if self._artifact is None:
+            return None
+        # snapshot_download caches under .../snapshots/<commit_sha>/
+        return self._artifact.model_dir.name
+
     def _load(self) -> ModelArtifact:
         try:
             import onnxruntime  # type: ignore[import-not-found]

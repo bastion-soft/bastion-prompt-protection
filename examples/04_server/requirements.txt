@@ -1,4 +1,4 @@
-bastion-prompt-protection>=1.0.0
+bastion-prompt-protection>=1.2.0
 fastapi>=0.110
 # Bare uvicorn — uvicorn[standard] would pull uvloop/httptools/websockets/
 # watchfiles. We don't use WebSockets or hot-reload in production, and
