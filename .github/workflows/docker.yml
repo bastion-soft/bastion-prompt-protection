@@ -20,6 +20,16 @@ name: Build and publish Docker images
 # Where <version> defaults to the package version in
 # bastion_prompt_protection/version.py if the workflow input is left blank.
 #
+# Architectures:
+#   - CPU image: linux/amd64 + linux/arm64 (multi-arch manifest, so Apple
+#     Silicon Macs and AWS Graviton pull a native arm64 image without
+#     emulation). The arm64 build runs under qemu on the GitHub-hosted
+#     amd64 runner — ~2× slower than the native amd64 build.
+#   - GPU image: linux/amd64 only. CUDA's arm64 story is limited to
+#     Jetson / Grace Hopper-style devices that aren't the target audience
+#     for the GPU image, and the CUDA base layer adds ~30 minutes when
+#     emulated.
+#
 # One-time setup:
 #   1. GHCR — works automatically; uses GITHUB_TOKEN.
 #   2. Docker Hub — create an access token at
@@ -56,9 +66,11 @@ jobs:
           - flavor: cpu
             dockerfile: docker/Dockerfile.cpu
             suffix: ""
+            platforms: "linux/amd64,linux/arm64"
           - flavor: gpu
             dockerfile: docker/Dockerfile.gpu
             suffix: "-gpu"
+            platforms: "linux/amd64"
 
     steps:
       - uses: actions/checkout@v4
@@ -73,7 +85,15 @@ jobs:
             VERSION="$INPUT"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Building images tagged: $VERSION (+ latest)"
+          echo "Building images tagged: $VERSION (+ latest) for platforms: ${{ matrix.platforms }}"
+
+      # Required for cross-arch builds — installs binfmt_misc handlers so
+      # the amd64 runner can build linux/arm64 layers under qemu emulation.
+      # No-op for the GPU build (amd64-only) but cheap enough to leave in.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.platforms }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -101,6 +121,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platforms }}
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/bastion-prompt-protection:latest${{ matrix.suffix }}
