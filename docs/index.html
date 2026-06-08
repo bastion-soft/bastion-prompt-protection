@@ -514,7 +514,7 @@
   <div class="nav-brand">
     <div class="logo">Bastion Soft</div>
     <div class="title">Prompt Protection</div>
-    <span class="version">v1.2.0</span>
+    <span class="version">v1.3.0</span>
   </div>
 
   <div class="nav-section">Overview</div>
@@ -569,7 +569,7 @@
   <section id="intro">
     <h1>
       Bastion Prompt Protection
-      <span class="tagline">Developer documentation — v1.2.0</span>
+      <span class="tagline">Developer documentation — v1.3.0</span>
     </h1>
 
     <p>
@@ -879,7 +879,7 @@ result.latency_ms     <span class="cm"># per-call wall-clock latency</span>
 result.is_attack      <span class="cm"># bool convenience property</span>
 
 <span class="cm"># Version identifiers — include in audit logs</span>
-guard.sdk_version     <span class="cm"># "1.2.0"</span>
+guard.sdk_version     <span class="cm"># "1.3.0"</span>
 guard.model_version   <span class="cm"># "c75249a" — 7-char commit SHA of the HF snapshot</span></code></pre>
 
     <div class="callout tip">
@@ -1214,7 +1214,7 @@ containers:
         <span class="badge badge-blue">property</span>
       </div>
       <div class="api-block-body">
-        <p>The installed <code>bastion-prompt-protection</code> package version. Example: <code>"1.2.0"</code>.</p>
+        <p>The installed <code>bastion-prompt-protection</code> package version. Example: <code>"1.3.0"</code>.</p>
       </div>
     </div>
 
@@ -1306,7 +1306,13 @@ config <span class="op">=</span> GuardConfig()</code></pre>
             <td><code>preset</code></td>
             <td><code>Preset</code></td>
             <td><code>Preset.TINY</code></td>
-            <td>Which model build to load. Only <code>TINY</code> is published currently.</td>
+            <td>Named model shortcut: <code>TINY</code> (free) or <code>MULTILINGUAL</code> (commercial). Overridden by <code>model</code> when set.</td>
+          </tr>
+          <tr>
+            <td><code>model</code></td>
+            <td><code>str | None</code></td>
+            <td><code>None</code></td>
+            <td>Point the detector at any HF repo id (your own fine-tune or a self-hosted model), bypassing the preset registry. Wins over <code>preset</code> when set.</td>
           </tr>
           <tr>
             <td><code>thresholds</code></td>
@@ -1343,6 +1349,18 @@ config <span class="op">=</span> GuardConfig()</code></pre>
             <td><code>str | None</code></td>
             <td><code>None</code></td>
             <td>Custom HuggingFace Hub cache root. <code>None</code> uses the HF default (<code>~/.cache/huggingface/</code>). Use <code>HF_HOME</code> env var as an alternative.</td>
+          </tr>
+          <tr>
+            <td><code>license_path</code></td>
+            <td><code>str | None</code></td>
+            <td><code>None</code></td>
+            <td>Path to a commercial license JSON. <code>None</code> auto-discovers <code>$BASTION_LICENSE</code>, then <code>~/.bastion/license.json</code>. Verified offline — see <a href="#license">License</a>.</td>
+          </tr>
+          <tr>
+            <td><code>require_license</code></td>
+            <td><code>bool</code></td>
+            <td><code>False</code></td>
+            <td>If <code>True</code>, <code>Guard()</code> refuses to start without a valid commercial license. Default is non-blocking (read <code>Guard.license_status</code>).</td>
           </tr>
         </tbody>
       </table>
@@ -1416,6 +1434,12 @@ config <span class="op">=</span> GuardConfig(
             <td>70 M</td>
             <td><span class="badge badge-green">Published</span></td>
           </tr>
+          <tr>
+            <td><code>Preset.MULTILINGUAL</code> / <code>"multilingual"</code></td>
+            <td>mdeberta-v3-base fine-tune — English + DE/FR/ES/IT/NO/DA</td>
+            <td>280 M</td>
+            <td><span class="badge badge-purple">Commercial (gated)</span></td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -1441,13 +1465,13 @@ config <span class="op">=</span> GuardConfig(
     </div>
 
     <h3>GET /health</h3>
-    <p>Returns <code>200 {"status": "ok", "version": "1.2.0"}</code> when the Guard is initialized and ready. Returns <code>503</code> otherwise. Use as Kubernetes <code>readinessProbe</code>.</p>
+    <p>Returns <code>200 {"status": "ok", "version": "1.3.0"}</code> when the Guard is initialized and ready. Returns <code>503</code> otherwise. Use as Kubernetes <code>readinessProbe</code>.</p>
 
     <h3>GET /</h3>
     <p>Returns service metadata: name, version, endpoint list, docs URL.</p>
     <pre data-lang="json"><code>{
   <span class="st">"service"</span>:   <span class="st">"bastion-prompt-protection"</span>,
-  <span class="st">"version"</span>:   <span class="st">"1.2.0"</span>,
+  <span class="st">"version"</span>:   <span class="st">"1.3.0"</span>,
   <span class="st">"endpoints"</span>: [<span class="st">"/health"</span>, <span class="st">"/protect"</span>],
   <span class="st">"docs"</span>:      <span class="st">"/docs"</span>
 }</code></pre>
@@ -1823,6 +1847,29 @@ config <span class="op">=</span> GuardConfig(
       </div>
     </div>
     <p>Suitable without a commercial license for: researchers, universities, internal tooling, and evaluation.</p>
+
+    <h3>Editions</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Free</th><th>Commercial</th></tr></thead>
+        <tbody>
+          <tr><td>Model</td><td><code>tiny</code> — 70M, English</td><td><code>multilingual</code> — 280M, 7 languages</td></tr>
+          <tr><td>License</td><td>AGPL-3.0</td><td>Commercial (lifts AGPL)</td></tr>
+          <tr><td>Weights</td><td>Open on Hugging Face</td><td>Gated — granted on purchase</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Offline license verification</h3>
+    <p>
+      Commercial licenses are Ed25519-signed and verify <strong>offline</strong> — no phone-home — so they work in
+      air-gapped and container deployments. Install the extra, then check status:
+    </p>
+    <pre data-lang="python"><code><span class="cm"># pip install "bastion-prompt-protection[license]"</span>
+<span class="im">from</span> bastion_prompt_protection <span class="im">import</span> verify_license
+
+verify_license()   <span class="cm"># $BASTION_LICENSE, then ~/.bastion/license.json</span>
+<span class="cm"># LicenseStatus(valid=True, tier="enterprise", company="…", valid_until="…")</span></code></pre>
   </section>
 
   <!-- ════════════════════════ LINKS ══════════════════════════════════ -->

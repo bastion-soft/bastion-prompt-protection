@@ -19,13 +19,13 @@ result.stage_reached     # "binary"  ("heuristics" for structural detections)
 result.latency_ms        # ~5
 
 # Identity info lives on the Guard instance (consistent across all calls):
-guard.sdk_version        # "1.2.0"
+guard.sdk_version        # "1.3.0"
 guard.model_version      # "c75249a" — identifier for the loaded model build
 ```
 
 ## How it scores on adversarial benchmarks
 
-Four open prompt-injection detectors evaluated across four held-out benchmarks. Numbers reproducible via `python -m scripts.run_leaderboard`. Raw JSON committed at [`eval/results/leaderboard.json`](eval/results/leaderboard.json).
+Leading open prompt-injection detectors evaluated across four held-out benchmarks. Numbers reproducible via `python -m scripts.run_leaderboard`. Raw JSON committed at [`eval/results/leaderboard.json`](eval/results/leaderboard.json).
 
 | Model | Params | Avg AUC | Avg F1 |
 |---|---:|---:|---:|
@@ -50,6 +50,17 @@ Per-benchmark numbers and latency in the full leaderboard JSON.
 | meta prompt-guard | 86M | 85.60% | 91.00% | 88.30% |
 
 Reproducible via `python -m scripts.measure_false_positives`. Raw JSON committed at [`eval/results/false_positives.json`](eval/results/false_positives.json).
+
+## Editions
+
+| | **Free** (this repo) | **Commercial** |
+|---|---|---|
+| Model | `tiny` — DeBERTa-v3-xsmall, 70M | `multilingual` — mdeberta-v3-base, 280M |
+| Languages | English | + German, French, Spanish, Italian, Norwegian, Danish |
+| License | AGPL-3.0 | Commercial (lifts AGPL) |
+| Weights | Open on Hugging Face | Gated — granted on purchase |
+
+The **free** model is the one benchmarked above — it already beats every open competitor on English detection *and* false-positive rate. The **commercial** multilingual model extends coverage to seven languages at an even lower false-positive rate. Request a quote at <https://bastionsoft.com>.
 
 ## Four ways to use it
 
@@ -104,6 +115,15 @@ guard = Guard()
 print(guard.protect("Ignore previous instructions..."))
 ```
 
+`Guard()` uses the free `tiny` model by default. To choose another model:
+
+```python
+from bastion_prompt_protection import Guard, GuardConfig, Preset
+
+Guard(preset=Preset.MULTILINGUAL)                    # commercial model (needs license + HF access)
+Guard(config=GuardConfig(model="my-org/my-model"))   # any HF repo — your own or self-hosted
+```
+
 Tutorial: [`examples/02_sdk/`](examples/02_sdk/README.md). Source code in [`bastion_prompt_protection/`](bastion_prompt_protection/).
 
 ### Pattern 3 — verify model accuracy yourself
@@ -113,7 +133,9 @@ pip install -e ".[eval]"
 python -m scripts.run_leaderboard
 ```
 
-Runs ~10 minutes on a GPU; ~30 minutes CPU. Writes the result to `eval/results/leaderboard.{json,md}`. Compares against four published baselines on four held-out benchmarks.
+No GPU? [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bastion-soft/bastion-prompt-protection/blob/main/eval/benchmark_colab.ipynb) runs the whole suite on a free T4.
+
+Runs ~10 minutes on a GPU; longer on CPU. Writes the result to `eval/results/leaderboard.{json,md}`. Compares against the leading published baselines on four held-out benchmarks.
 
 Tutorial: [`examples/03_eval/`](examples/03_eval/README.md). Eval harness in [`eval/`](eval/README.md).
 
@@ -146,11 +168,22 @@ The entire source code is available on our Github.
 
 ## License
 
-[AGPL-3.0-or-later](LICENSE).
+[AGPL-3.0-or-later](LICENSE) for the SDK and the free `tiny` model.
 
 If you use Bastion Prompt Protection as part of a software, AGPL obligates you to make the entire software source code available to users of that software. Suitable for researchers, universities and evaluation purpose.
 
-**Commercial licensing is available** for organisations whose deployment cannot meet AGPL terms — request a quote at <https://bastionsoft.com>.
+**Commercial licensing** lifts the AGPL obligation and unlocks the multilingual model — request a quote at <https://bastionsoft.com>. Commercial licenses are Ed25519-signed and verify **offline** (no phone-home), so they work in air-gapped and container deployments:
+
+```bash
+pip install "bastion-prompt-protection[license]"
+```
+
+```python
+from bastion_prompt_protection import verify_license
+
+verify_license()          # checks $BASTION_LICENSE, then ~/.bastion/license.json
+# LicenseStatus(valid=True, tier="enterprise", company="…", valid_until="…")
+```
 
 ## Citation
 

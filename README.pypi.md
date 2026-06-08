@@ -18,7 +18,7 @@ result.stage_reached     # "heuristics" or "binary" — which layer decided
 result.latency_ms        # per-call latency
 
 # Identity info lives on the Guard (same for every call from this instance):
-guard.sdk_version        # "1.2.0"
+guard.sdk_version        # "1.3.0"
 guard.model_version      # identifier for the loaded model build — pin or log this
 ```
 
@@ -43,7 +43,7 @@ The first call downloads the model from the Hugging Face Hub and caches it under
 
 ## How it scores on adversarial benchmarks
 
-Four open prompt-injection detectors evaluated across four held-out benchmarks. Numbers reproducible via `python -m scripts.run_leaderboard` in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection).
+Leading open prompt-injection detectors evaluated across four held-out benchmarks. Numbers reproducible via `python -m scripts.run_leaderboard` in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection).
 
 | Model | Params | Avg AUC | Avg F1 |
 |---|---:|---:|---:|
@@ -76,6 +76,15 @@ config.cache_dir = "/opt/bastion/cache"
 guard = Guard(config=config)
 ```
 
+### Choosing a model
+
+`Guard()` defaults to the free `tiny` (English) model. To use another:
+
+```python
+Guard(preset=Preset.MULTILINGUAL)                    # commercial multilingual (license + HF access)
+Guard(config=GuardConfig(model="my-org/my-model"))   # any HF repo — your own or self-hosted
+```
+
 Then optionally set `HF_HUB_OFFLINE=1` to forbid network access at runtime — useful in regulated environments where the model must be baked into a container at build time.
 
 ## Other deployment options
@@ -97,4 +106,4 @@ All four patterns documented in the [GitHub repo](https://github.com/bastion-sof
 
 [AGPL-3.0-or-later](https://github.com/bastion-soft/bastion-prompt-protection/blob/main/LICENSE).
 
-If you use Bastion Prompt Protection in a software product that users interact with remotely over a network, AGPL obligates you to make the corresponding source available to those users. **Commercial licensing** is available for organisations whose deployment cannot meet AGPL terms — request a quote at <https://bastionsoft.com>.
+If you use Bastion Prompt Protection in a software product that users interact with remotely over a network, AGPL obligates you to make the corresponding source available to those users. **Commercial licensing** lifts that obligation and unlocks the multilingual model — request a quote at <https://bastionsoft.com>. Commercial licenses are Ed25519-signed and verify **offline** (`verify_license()`, `pip install "bastion-prompt-protection[license]"`), so they work in air-gapped deployments.

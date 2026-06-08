@@ -50,17 +50,37 @@ from eval.runners import TransformersRunner
 logger = logging.getLogger(__name__)
 
 
+# Commercial, gated on the HF Hub — scored automatically if your HF token has
+# been granted access, skipped with a notice otherwise (see the loop below).
+COMMERCIAL_MODELS = {
+    "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
+}
+
 # (display_name, hf_model_id, attack_label_id_or_indices)
 # Order matters: bastion first so the human-readable table reads bastion-vs-field.
 BASELINES: list[tuple[str, str, int | list[int]]] = [
+    # The free, open (AGPL) model — fully reproducible by anyone.
     (
         "bastion-prompt-protection (70M)",
         "bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1",
         1,
     ),
-    ("hlyn judge (70M)", "hlyn-labs/prompt-injection-judge-deberta-70m", 1),
+    # Commercial multilingual model (gated) — scored if your token has access.
+    (
+        "bastion multilingual (280M, commercial)",
+        "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
+        1,
+    ),
+    # Open-source competitors (all public).
+    ("wolf-defender (0.3B)", "patronus-studio/wolf-defender-prompt-injection", 1),
+    ("wolf-defender-small (0.1B)", "patronus-studio/wolf-defender-prompt-injection-small", 1),
+    ("sentinel (qualifire, 395M)", "qualifire/prompt-injection-sentinel", 1),
+    ("proventra mdeberta (280M)", "proventra/mdeberta-v3-base-prompt-injection", 1),
+    ("piguard (deberta)", "leolee99/PIGuard", 1),
+    ("fmops distilbert (67M)", "fmops/distilbert-prompt-injection", 1),
     ("protectai v2 (184M)", "protectai/deberta-v3-base-prompt-injection-v2", 1),
     ("deepset injection (184M)", "deepset/deberta-v3-base-injection", 1),
+    ("hlyn judge (70M)", "hlyn-labs/prompt-injection-judge-deberta-70m", 1),
     # Meta Prompt-Guard is 3-class (0=BENIGN, 1=INJECTION, 2=JAILBREAK).
     # Both 1 and 2 count as "attack" in our binary frame — sum their probs.
     # Requires HF gated-access approval at:
@@ -323,7 +343,14 @@ def main() -> int:
                 name=display,
             )
         except Exception as exc:
-            logger.warning("   ✗ skip (%s): %s", type(exc).__name__, str(exc)[:200])
+            if model_id in COMMERCIAL_MODELS:
+                logger.warning(
+                    "   ✗ skip %s — commercial, gated model. Obtain a license + access at "
+                    "https://bastionsoft.com, then `huggingface-cli login`. (%s)",
+                    display, str(exc)[:160],
+                )
+            else:
+                logger.warning("   ✗ skip (%s): %s", type(exc).__name__, str(exc)[:200])
             continue
 
         for dataset_name, prompts in datasets.items():
