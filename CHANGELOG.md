@@ -2,6 +2,24 @@
 
 All notable changes to Bastion Prompt Protection are documented here. The format is loosely based on [Keep a Changelog](https://keepachangelog.com); this project follows [Semantic Versioning](https://semver.org).
 
+## [1.3.0] — 2026-06-08
+
+**Adds the commercial multilingual model, a custom-model override, and offline license verification — all additive. The free `tiny` model and the existing API are unchanged.**
+
+### Added
+
+- **`Preset.MULTILINGUAL`** — the commercial multilingual model (`bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1`; mdeberta-v3-base, 280M; English + German, French, Spanish, Italian, Norwegian, Danish). The weights are gated on the HF Hub, so `Guard(preset=Preset.MULTILINGUAL)` works once your token has been granted access (i.e. you hold a commercial license). This is the "fresh, descriptive preset name" promised when the `FAST`/`ACCURATE` stubs were removed in 1.2.0.
+- **`GuardConfig(model=...)`** — point the detector at any HF repo id (your own fine-tune, or a self-hosted model), bypassing the preset registry. Wins over `preset` when set; presets remain the convenient shortcut.
+- **Offline commercial-license verification** (`bastion_prompt_protection.license`):
+  - `verify_license(source=None) -> LicenseStatus` — verifies an Ed25519-signed license fully offline (no network call), checking signature then expiry. Auto-discovers `$BASTION_LICENSE`, then `~/.bastion/license.json`. Exported at top level (`from bastion_prompt_protection import verify_license`).
+  - `Guard.license_status` — non-blocking license status, for audit/logging.
+  - `GuardConfig(require_license=True)` — opt-in; `Guard()` refuses to start without a valid license (default stays non-blocking).
+  - New optional extra: `pip install "bastion-prompt-protection[license]"` (pulls `pynacl`). The free `tiny` model needs none of this.
+
+### Changed
+
+- **Benchmark scripts now score the full competitor field.** `scripts/run_leaderboard.py` and `scripts/measure_false_positives.py` expanded from a handful of baselines to the leading open detectors (Wolf-Defender ×2, Sentinel, Proventra, PIGuard, Fmops, ProtectAI, Deepset, Hlyn, Meta Prompt-Guard). They also list the commercial multilingual model as a gated, optional row — scored automatically for license holders with HF access, skipped with a "request a license" notice otherwise.
+
 ## [1.2.0] — 2026-05-19
 
 **SDK-only minor release — cleanup, breaking simplifications, no model change.** Same v1.1 weights, but a much leaner Python API. The motivating prompt:

@@ -39,6 +39,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Offline commercial-license verification (Ed25519). Only needed if you use a
+# commercial license file / require_license; the free TINY model needs none.
+license = [
+    "pynacl>=1.5",
+]
 training = [
     "torch>=2.1",
     "transformers>=4.40",
@@ -63,6 +68,7 @@ dev = [
     "pytest-cov>=4.1",
     "ruff>=0.4",
     "mypy>=1.9",
+    "pynacl>=1.5",  # so the license-verification tests run in dev/CI
 ]
 
 [project.urls]

@@ -33,15 +33,42 @@ from eval.runners import TransformersRunner
 logger = logging.getLogger(__name__)
 
 
+# Commercial models — gated on the HF Hub. The harness still lists them so a
+# license holder (with a granted HF token) can score them in the same run; for
+# everyone else they fail to download and are skipped with a clear message
+# pointing at how to get access. See the skip handler in main().
+COMMERCIAL_MODELS = {
+    "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
+}
+
 # (display_name, hf_model_id, attack_label_id)
 # attack_label_id may be int (single attack class) or list[int] (sum across
-# multiple attack classes — for multi-class detectors).
+# multiple attack classes — for multi-class detectors). All competitors are
+# binary with attack = LABEL_1; if any returns AUC < 0.5 its polarity is
+# reversed — flip that entry's index to 0.
 BASELINES: list[tuple[str, str, int | list[int]]] = [
+    # --- Ours -------------------------------------------------------------
+    # The free, open (AGPL) model — fully reproducible by anyone. This is the
+    # one the public benchmark is about.
     (
         "bastion-prompt-protection (70M)",
         "bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1",
         1,
     ),
+    # The commercial multilingual model (gated). Scored automatically if your
+    # HF token has been granted access; skipped with a notice otherwise.
+    (
+        "bastion multilingual (280M, commercial)",
+        "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
+        1,
+    ),
+    # --- Open-source competitors (all public, all reproducible) -----------
+    ("wolf-defender (0.3B)", "patronus-studio/wolf-defender-prompt-injection", 1),
+    ("wolf-defender-small (0.1B)", "patronus-studio/wolf-defender-prompt-injection-small", 1),
+    ("sentinel (qualifire, 395M)", "qualifire/prompt-injection-sentinel", 1),
+    ("proventra mdeberta (280M)", "proventra/mdeberta-v3-base-prompt-injection", 1),
+    ("piguard (deberta)", "leolee99/PIGuard", 1),
+    ("fmops distilbert (67M)", "fmops/distilbert-prompt-injection", 1),
     ("protectai v2 (184M)", "protectai/deberta-v3-base-prompt-injection-v2", 1),
     ("deepset injection (184M)", "deepset/deberta-v3-base-injection", 1),
     ("hlyn judge (70M)", "hlyn-labs/prompt-injection-judge-deberta-70m", 1),
@@ -98,7 +125,15 @@ def main() -> int:
                 name=display,
             )
         except Exception as exc:
-            logger.warning("skip %s: %s", display, exc)
+            if model_id in COMMERCIAL_MODELS:
+                logger.warning(
+                    "skip %s — this is a commercial, gated model. To include it, "
+                    "obtain a license and access at https://bastionsoft.com, then "
+                    "`huggingface-cli login` with the granted token. (%s)",
+                    display, exc,
+                )
+            else:
+                logger.warning("skip %s: %s", display, exc)
             continue
         for key, bench in bench_pairs:
             try:

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import time
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from bastion_prompt_protection.config import GuardConfig, Preset
+
+if TYPE_CHECKING:
+    from bastion_prompt_protection.license import LicenseStatus
 from bastion_prompt_protection.stages.binary import BinaryStage
 from bastion_prompt_protection.stages.heuristics import HeuristicsStage
 from bastion_prompt_protection.version import __version__
@@ -39,6 +42,15 @@ class Guard:
     ) -> None:
         self.config = config or GuardConfig.from_preset(preset)
 
+        if self.config.require_license:
+            status = self.license_status
+            if not status.valid:
+                raise RuntimeError(
+                    "Bastion: require_license=True but no valid commercial license was "
+                    f"found ({status.reason}). Obtain one at https://bastionsoft.com, "
+                    "or set require_license=False."
+                )
+
         self._heuristics = HeuristicsStage() if self.config.enable_heuristics else None
         self._binary = (
             BinaryStage(self.config.model_id("binary"), cache_dir=self.config.cache_dir)
@@ -61,6 +73,15 @@ class Guard:
         if self._binary is None:
             return None
         return self._binary.model_version
+
+    @property
+    def license_status(self) -> "LicenseStatus":
+        """Offline status of the commercial license (Ed25519 signature + expiry),
+        from `config.license_path` or the default locations. Non-blocking — read
+        it for audit/logging. The free TINY model needs no license."""
+        from bastion_prompt_protection.license import verify_license
+
+        return verify_license(self.config.license_path)
 
     def protect(self, prompt: str) -> GuardResult:
         start = time.perf_counter()
