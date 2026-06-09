@@ -74,11 +74,27 @@ class OnnxModelLoader:
                 "reinstall bastion-prompt-protection to repair: pip install --force-reinstall bastion-prompt-protection"
             ) from exc
 
-        local_dir = snapshot_download(
-            repo_id=self.model_id,
-            cache_dir=str(self.cache_dir) if self.cache_dir else None,
+        # Fetch only what ONNX inference needs — the INT8 model + small sidecars
+        # (tokenizer / config / labels) — not the fp32 weights or fp32 ONNX, which
+        # can be gigabytes and are never used at runtime. Fall back to the full
+        # ONNX set only if a repo ships no quantized build.
+        cache = str(self.cache_dir) if self.cache_dir else None
+        sidecars = ["*.json", "*.txt", "*.model"]
+        local_path = Path(
+            snapshot_download(
+                repo_id=self.model_id,
+                cache_dir=cache,
+                allow_patterns=["onnx/model_quantized.onnx", *sidecars],
+            )
         )
-        local_path = Path(local_dir)
+        if not (local_path / "onnx" / "model_quantized.onnx").exists():
+            local_path = Path(
+                snapshot_download(
+                    repo_id=self.model_id,
+                    cache_dir=cache,
+                    allow_patterns=["*.onnx", "onnx/*.onnx", *sidecars],
+                )
+            )
 
         # Look for the ONNX file in the HF/Optimum-conventional locations,
         # preferring the quantized build for fastest CPU inference.

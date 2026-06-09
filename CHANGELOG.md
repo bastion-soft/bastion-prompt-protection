@@ -2,6 +2,12 @@
 
 All notable changes to Bastion Prompt Protection are documented here. The format is loosely based on [Keep a Changelog](https://keepachangelog.com); this project follows [Semantic Versioning](https://semver.org).
 
+## [1.3.1] — 2026-06-09
+
+### Changed
+
+- **Model download is now minimal.** The loader fetches only the INT8 ONNX model plus its small sidecars (tokenizer / config / labels / temperature), instead of the entire repo. It previously pulled the fp32 weights *and* the fp32 ONNX as well — multiple GB of files never used at runtime (≈2.5 GB → ≈290 MB for the multilingual model; first-load is dramatically faster). Falls back to the full ONNX set only if a repo ships no quantized build. No API change.
+
 ## [1.3.0] — 2026-06-08
 
 **Adds the commercial multilingual model, a custom-model override, and offline license verification — all additive. The free `tiny` model and the existing API are unchanged.**
