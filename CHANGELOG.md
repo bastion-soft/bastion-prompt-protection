@@ -15,6 +15,9 @@ All notable changes to Bastion Prompt Protection are documented here. The format
   - `Guard.license_status` — non-blocking license status, for audit/logging.
   - `GuardConfig(require_license=True)` — opt-in; `Guard()` refuses to start without a valid license (default stays non-blocking).
   - New optional extra: `pip install "bastion-prompt-protection[license]"` (pulls `pynacl`). The free `tiny` model needs none of this.
+- **LangChain integration** (`bastion_prompt_protection.integrations.langchain`) — `BastionGuardrail`, an idiomatic LCEL `Runnable` you drop at the front of a chain (`BastionGuardrail() | prompt | llm`). Benign input passes through unchanged; an attack raises `PromptInjectionError` (carrying the `GuardResult`), or with `block=False` passes through for branch-on-verdict flows. Optional extra: `pip install "bastion-prompt-protection[langchain]"`. See `examples/06_langchain/`.
+- **LlamaIndex integration** (`bastion_prompt_protection.integrations.llamaindex`) — `BastionGuardrailPostprocessor`, a `BaseNodePostprocessor` you drop into a query engine's `node_postprocessors`. It runs after retrieval and screens **both the query and the retrieved nodes**, so it catches *indirect* injection (a malicious instruction hidden in a retrieved document) — not just the user's prompt. `block=True` raises `PromptInjectionError`; `block=False` drops the flagged nodes so poisoned content never reaches the LLM. Optional extra: `pip install "bastion-prompt-protection[llamaindex]"`. See `examples/07_llamaindex/`.
+- **`bastion_prompt_protection.exceptions.PromptInjectionError`** — shared by both integrations (subclasses `ValueError`, carries the `GuardResult` on `.result`), so one `except` catches either framework.
 
 ### Changed
 

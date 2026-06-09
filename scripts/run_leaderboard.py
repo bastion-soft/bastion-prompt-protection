@@ -67,7 +67,9 @@ BASELINES: list[tuple[str, str, int | list[int]]] = [
     ("wolf-defender-small (0.1B)", "patronus-studio/wolf-defender-prompt-injection-small", 1),
     ("sentinel (qualifire, 395M)", "qualifire/prompt-injection-sentinel", 1),
     ("proventra mdeberta (280M)", "proventra/mdeberta-v3-base-prompt-injection", 1),
-    ("piguard (deberta)", "leolee99/PIGuard", 1),
+    # PIGuard (leolee99/PIGuard) deliberately omitted: it requires
+    # trust_remote_code=True to load, and a reproducible security-tool harness
+    # should not execute arbitrary remote code from a third-party repo.
     ("fmops distilbert (67M)", "fmops/distilbert-prompt-injection", 1),
     ("protectai v2 (184M)", "protectai/deberta-v3-base-prompt-injection-v2", 1),
     ("deepset injection (184M)", "deepset/deberta-v3-base-injection", 1),
@@ -166,6 +168,14 @@ def _format_markdown(rows: list[tuple[str, SuiteRow]], bench_order: list[str]) -
     for key, r in rows:
         by_runner.setdefault(r.runner, {})[key] = r
 
+    # Rank models by average AUC (descending), applied consistently to every
+    # table so the same model order reads down the AUC, F1 and latency tables.
+    def _avg_auc(by_bench: dict[str, SuiteRow]) -> float:
+        vals = [row.auc for row in by_bench.values()]
+        return statistics.mean(vals) if vals else 0.0
+
+    order = sorted(by_runner, key=lambda name: _avg_auc(by_runner[name]), reverse=True)
+
     headers = [BENCHMARK_DISPLAY.get(k, k) for k in bench_order]
 
     lines: list[str] = []
@@ -173,7 +183,8 @@ def _format_markdown(rows: list[tuple[str, SuiteRow]], bench_order: list[str]) -
     lines.append("")
     lines.append("| Model | " + " | ".join(headers) + " | **Avg** |")
     lines.append("|" + "---|" * (len(headers) + 2))
-    for runner, by_bench in by_runner.items():
+    for runner in order:
+        by_bench = by_runner[runner]
         values, aucs = [], []
         for key in bench_order:
             row = by_bench.get(key)
@@ -190,7 +201,8 @@ def _format_markdown(rows: list[tuple[str, SuiteRow]], bench_order: list[str]) -
     lines.append("")
     lines.append("| Model | " + " | ".join(headers) + " | **Avg** |")
     lines.append("|" + "---|" * (len(headers) + 2))
-    for runner, by_bench in by_runner.items():
+    for runner in order:
+        by_bench = by_runner[runner]
         values, f1s = [], []
         for key in bench_order:
             row = by_bench.get(key)
@@ -207,7 +219,8 @@ def _format_markdown(rows: list[tuple[str, SuiteRow]], bench_order: list[str]) -
     lines.append("")
     lines.append("| Model | " + " | ".join(headers) + " |")
     lines.append("|" + "---|" * (len(headers) + 1))
-    for runner, by_bench in by_runner.items():
+    for runner in order:
+        by_bench = by_runner[runner]
         values = []
         for key in bench_order:
             row = by_bench.get(key)

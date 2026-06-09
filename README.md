@@ -25,17 +25,18 @@ guard.model_version      # "c75249a" — identifier for the loaded model build
 
 ## How it scores on adversarial benchmarks
 
-Leading open prompt-injection detectors evaluated across four held-out benchmarks. Numbers reproducible via `python -m scripts.run_leaderboard`. Raw JSON committed at [`eval/results/leaderboard.json`](eval/results/leaderboard.json).
+Leading open prompt-injection detectors across four held-out benchmarks. The free model and every competitor reproduce from public weights via `python -m scripts.run_leaderboard`; the commercial multilingual row requires a license. Full 11-model table + latency in [`eval/results/leaderboard.md`](eval/results/leaderboard.md).
 
 | Model | Params | Avg AUC | Avg F1 |
 |---|---:|---:|---:|
-| **bastion-prompt-protection** | 70M | **0.984** | **0.936** |
-| hlyn judge | 70M | 0.950 | 0.708 |
+| **bastion-prompt-protection** (free) | 70M | **0.984** | **0.936** |
+| bastion multilingual (commercial) | 280M | 0.991 | 0.947 |
+| sentinel | 395M | 0.959 | 0.858 |
+| wolf-defender | 0.3B | 0.954 | 0.893 |
 | protectai v2 | 184M | 0.850 | 0.599 |
 | deepset injection | 184M | 0.766 | 0.696 |
-| meta prompt-guard | 86M | 0.298 | 0.594 |
 
-Per-benchmark numbers and latency in the full leaderboard JSON.
+The free model tops every open competitor on average; the commercial multilingual model goes further and adds six languages. Per-benchmark numbers and latency in the full leaderboard.
 
 ## How it scores on real traffic
 
@@ -43,11 +44,12 @@ Per-benchmark numbers and latency in the full leaderboard JSON.
 
 | Model | Params | WildChat | LMSYS | **Avg** |
 |---|---:|---:|---:|---:|
-| **bastion-prompt-protection** | 70M | **1.26%** | **1.72%** | **1.49%** |
+| **bastion-prompt-protection** (free) | 70M | **1.26%** | **1.72%** | **1.49%** |
+| bastion multilingual (commercial) | 280M | 1.04% | 1.50% | 1.27% |
 | protectai v2 | 184M | 7.60% | 10.04% | 8.82% |
-| hlyn judge | 70M | 22.76% | 20.30% | 21.53% |
+| sentinel | 395M | 23.82% | 23.38% | 23.60% |
+| wolf-defender | 0.3B | 18.80% | 29.26% | 24.03% |
 | deepset injection | 184M | 67.20% | 64.58% | 65.89% |
-| meta prompt-guard | 86M | 85.60% | 91.00% | 88.30% |
 
 Reproducible via `python -m scripts.measure_false_positives`. Raw JSON committed at [`eval/results/false_positives.json`](eval/results/false_positives.json).
 
@@ -57,7 +59,7 @@ Reproducible via `python -m scripts.measure_false_positives`. Raw JSON committed
 |---|---|---|
 | Model | `tiny` — DeBERTa-v3-xsmall, 70M | `multilingual` — mdeberta-v3-base, 280M |
 | Languages | English | + German, French, Spanish, Italian, Norwegian, Danish |
-| License | AGPL-3.0 | Commercial (lifts AGPL) |
+| License | AGPL-3.0 | Commercial (Bastionsoft EULA) |
 | Weights | Open on Hugging Face | Gated — granted on purchase |
 
 The **free** model is the one benchmarked above — it already beats every open competitor on English detection *and* false-positive rate. The **commercial** multilingual model extends coverage to seven languages at an even lower false-positive rate. Request a quote at <https://bastionsoft.com>.
@@ -160,6 +162,36 @@ GPU variant: `ghcr.io/bastion-soft/bastion-prompt-protection:latest-gpu` (requir
 Tutorial: [`examples/04_server/`](examples/04_server/README.md). Production Dockerfiles in [`docker/`](docker/). The published images are byte-for-byte reproducible from those Dockerfiles.
 
 The entire source code is available on our Github.
+
+## Integrations
+
+**LangChain** — drop Bastion in front of a chain as an input guardrail:
+
+```bash
+pip install "bastion-prompt-protection[langchain]"
+```
+
+```python
+from bastion_prompt_protection.integrations.langchain import BastionGuardrail
+
+chain = BastionGuardrail() | prompt | llm   # injection attempts raise PromptInjectionError before the LLM
+```
+
+Benign input flows through unchanged; attacks raise (or pass through with `block=False`). See [`examples/06_langchain/`](examples/06_langchain/README.md).
+
+**LlamaIndex** — screen a RAG pipeline as a node postprocessor (catches *indirect* injection in retrieved documents, not just the query):
+
+```bash
+pip install "bastion-prompt-protection[llamaindex]"
+```
+
+```python
+from bastion_prompt_protection.integrations.llamaindex import BastionGuardrailPostprocessor
+
+index.as_query_engine(node_postprocessors=[BastionGuardrailPostprocessor()])
+```
+
+Runs after retrieval, before the LLM; raises on a flagged query/node, or drops poisoned nodes with `block=False`. See [`examples/07_llamaindex/`](examples/07_llamaindex/README.md).
 
 ## Detection pipeline
 
