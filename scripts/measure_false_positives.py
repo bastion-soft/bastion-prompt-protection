@@ -76,7 +76,7 @@ BASELINES: list[tuple[str, str, int | list[int]]] = [
     ("wolf-defender-small (0.1B)", "patronus-studio/wolf-defender-prompt-injection-small", 1),
     ("sentinel (qualifire, 395M)", "qualifire/prompt-injection-sentinel", 1),
     ("proventra mdeberta (280M)", "proventra/mdeberta-v3-base-prompt-injection", 1),
-    ("piguard (deberta)", "leolee99/PIGuard", 1),
+    # PIGuard omitted — needs trust_remote_code=True (see run_leaderboard.py).
     ("fmops distilbert (67M)", "fmops/distilbert-prompt-injection", 1),
     ("protectai v2 (184M)", "protectai/deberta-v3-base-prompt-injection-v2", 1),
     ("deepset injection (184M)", "deepset/deberta-v3-base-injection", 1),

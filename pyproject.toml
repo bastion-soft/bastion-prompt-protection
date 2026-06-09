@@ -44,6 +44,14 @@ dependencies = [
 license = [
     "pynacl>=1.5",
 ]
+# LangChain input-guardrail integration (bastion_prompt_protection.integrations.langchain).
+langchain = [
+    "langchain-core>=0.3",
+]
+# LlamaIndex RAG guardrail integration (bastion_prompt_protection.integrations.llamaindex).
+llamaindex = [
+    "llama-index-core>=0.11",
+]
 training = [
     "torch>=2.1",
     "transformers>=4.40",
@@ -69,6 +77,8 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.9",
     "pynacl>=1.5",  # so the license-verification tests run in dev/CI
+    "langchain-core>=0.3",  # so the LangChain integration tests run in dev/CI
+    "llama-index-core>=0.11",  # so the LlamaIndex integration tests run in dev/CI
 ]
 
 [project.urls]
