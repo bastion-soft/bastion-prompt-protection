@@ -1710,9 +1710,9 @@ config <span class="op">=</span> GuardConfig(
 
     <h3>Adversarial Benchmark (AUC / F1)</h3>
     <p>
-      Five open prompt-injection detectors evaluated across four held-out benchmarks.
-      Reproducible via <code>python -m scripts.run_leaderboard</code>.
-      Raw JSON committed at <code>eval/results/leaderboard.json</code>.
+      Leading open prompt-injection detectors across four held-out benchmarks. The
+      free model and every competitor reproduce via <code>python -m scripts.run_leaderboard</code>;
+      the commercial multilingual row requires a license. Raw JSON at <code>eval/results/leaderboard.json</code>.
     </p>
 
     <div class="table-wrap">
@@ -1725,16 +1725,28 @@ config <span class="op">=</span> GuardConfig(
         </thead>
         <tbody>
           <tr class="best">
-            <td>bastion-prompt-protection (this library)</td>
+            <td>bastion-prompt-protection (free, this library)</td>
             <td style="text-align:right">70M</td>
             <td style="text-align:right">0.984</td>
             <td style="text-align:right">0.936</td>
           </tr>
           <tr>
-            <td>hlyn judge</td>
-            <td style="text-align:right">70M</td>
-            <td style="text-align:right">0.950</td>
-            <td style="text-align:right">0.708</td>
+            <td>bastion multilingual (commercial)</td>
+            <td style="text-align:right">280M</td>
+            <td style="text-align:right">0.991</td>
+            <td style="text-align:right">0.947</td>
+          </tr>
+          <tr>
+            <td>sentinel</td>
+            <td style="text-align:right">395M</td>
+            <td style="text-align:right">0.959</td>
+            <td style="text-align:right">0.858</td>
+          </tr>
+          <tr>
+            <td>wolf-defender</td>
+            <td style="text-align:right">0.3B</td>
+            <td style="text-align:right">0.954</td>
+            <td style="text-align:right">0.893</td>
           </tr>
           <tr>
             <td>protectai v2</td>
@@ -1747,12 +1759,6 @@ config <span class="op">=</span> GuardConfig(
             <td style="text-align:right">184M</td>
             <td style="text-align:right">0.766</td>
             <td style="text-align:right">0.696</td>
-          </tr>
-          <tr>
-            <td>meta prompt-guard</td>
-            <td style="text-align:right">86M</td>
-            <td style="text-align:right">0.298</td>
-            <td style="text-align:right">0.594</td>
           </tr>
         </tbody>
       </table>
@@ -1778,11 +1784,18 @@ config <span class="op">=</span> GuardConfig(
         </thead>
         <tbody>
           <tr class="best">
-            <td>bastion-prompt-protection</td>
+            <td>bastion-prompt-protection (free)</td>
             <td style="text-align:right">70M</td>
             <td style="text-align:right">1.26%</td>
             <td style="text-align:right">1.72%</td>
             <td style="text-align:right">1.49%</td>
+          </tr>
+          <tr>
+            <td>bastion multilingual (commercial)</td>
+            <td style="text-align:right">280M</td>
+            <td style="text-align:right">1.04%</td>
+            <td style="text-align:right">1.50%</td>
+            <td style="text-align:right">1.27%</td>
           </tr>
           <tr>
             <td>protectai v2</td>
@@ -1792,11 +1805,18 @@ config <span class="op">=</span> GuardConfig(
             <td style="text-align:right">8.82%</td>
           </tr>
           <tr>
-            <td>hlyn judge</td>
-            <td style="text-align:right">70M</td>
-            <td style="text-align:right">22.76%</td>
-            <td style="text-align:right">20.30%</td>
-            <td style="text-align:right">21.53%</td>
+            <td>sentinel</td>
+            <td style="text-align:right">395M</td>
+            <td style="text-align:right">23.82%</td>
+            <td style="text-align:right">23.38%</td>
+            <td style="text-align:right">23.60%</td>
+          </tr>
+          <tr>
+            <td>wolf-defender</td>
+            <td style="text-align:right">0.3B</td>
+            <td style="text-align:right">18.80%</td>
+            <td style="text-align:right">29.26%</td>
+            <td style="text-align:right">24.03%</td>
           </tr>
           <tr>
             <td>deepset injection</td>
@@ -1804,13 +1824,6 @@ config <span class="op">=</span> GuardConfig(
             <td style="text-align:right">67.20%</td>
             <td style="text-align:right">64.58%</td>
             <td style="text-align:right">65.89%</td>
-          </tr>
-          <tr>
-            <td>meta prompt-guard</td>
-            <td style="text-align:right">86M</td>
-            <td style="text-align:right">85.60%</td>
-            <td style="text-align:right">91.00%</td>
-            <td style="text-align:right">88.30%</td>
           </tr>
         </tbody>
       </table>
@@ -1820,9 +1833,9 @@ config <span class="op">=</span> GuardConfig(
       <span class="callout-icon">ℹ️</span>
       <div>
         High AUC on adversarial benchmarks alone isn't sufficient for production.
-        A detector that flags 22% of legitimate greetings and chitchat (hlyn judge)
-        or 88% of benign messages (meta prompt-guard) is not deployable.
-        v1.1 was the version where bastion first achieved competitive accuracy on both axes simultaneously.
+        A detector that flags ~24% of legitimate greetings and chitchat (wolf-defender,
+        sentinel) — both strong-detection models — or 66% of benign messages (deepset)
+        is not deployable. bastion tops detection while flagging ~1.5% of real users.
       </div>
     </div>
   </section>

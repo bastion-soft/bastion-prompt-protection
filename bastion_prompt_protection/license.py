@@ -35,10 +35,12 @@ _PUBLIC_KEY_B64 = "BSMpA1IBRWo671jTEp6ZZ96vrjRANPgvOM1g4PwAUkk="
 
 def _default_paths() -> list[str]:
     return [
-        p for p in (
+        p
+        for p in (
             os.environ.get("BASTION_LICENSE"),
             str(Path.home() / ".bastion" / "license.json"),
-        ) if p
+        )
+        if p
     ]
 
 
@@ -61,9 +63,9 @@ class LicenseStatus:
 def _canonical_json(obj: dict) -> bytes:
     # MUST match the licensing minter byte-for-byte or signatures won't verify:
     # sorted keys, no whitespace, non-ASCII preserved, UTF-8.
-    return json.dumps(
-        obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
+        "utf-8"
+    )
 
 
 def _load(source: dict | str | Path | None) -> dict | None:

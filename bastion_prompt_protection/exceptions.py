@@ -17,9 +17,8 @@ class PromptInjectionError(ValueError):
     ``ValueError`` so existing ``except ValueError`` handlers still catch it.
     """
 
-    def __init__(self, result: "GuardResult") -> None:
+    def __init__(self, result: GuardResult) -> None:
         self.result = result
         super().__init__(
-            f"Prompt injection detected (risk={result.risk:.3f}, "
-            f"stage={result.stage_reached})."
+            f"Prompt injection detected (risk={result.risk:.3f}, stage={result.stage_reached})."
         )

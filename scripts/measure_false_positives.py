@@ -347,7 +347,8 @@ def main() -> int:
                 logger.warning(
                     "   ✗ skip %s — commercial, gated model. Obtain a license + access at "
                     "https://bastionsoft.com, then `huggingface-cli login`. (%s)",
-                    display, str(exc)[:160],
+                    display,
+                    str(exc)[:160],
                 )
             else:
                 logger.warning("   ✗ skip (%s): %s", type(exc).__name__, str(exc)[:200])

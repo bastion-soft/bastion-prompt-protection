@@ -16,8 +16,8 @@ import pytest
 from bastion_prompt_protection import LicenseStatus, verify_license
 from bastion_prompt_protection import license as lic
 
-
 # --- No crypto needed -------------------------------------------------------
+
 
 def test_missing_file_is_invalid(tmp_path) -> None:
     status = verify_license(str(tmp_path / "nope.json"))
@@ -35,14 +35,13 @@ def test_license_without_signature_is_invalid() -> None:
 
 # --- Signature cases (need the `license` extra) -----------------------------
 
+
 @pytest.fixture
 def signing_key(monkeypatch):
     nacl_signing = pytest.importorskip("nacl.signing")
     sk = nacl_signing.SigningKey.generate()
     # Point the verifier's embedded public key at this throwaway test key.
-    monkeypatch.setattr(
-        lic, "_PUBLIC_KEY_B64", base64.b64encode(bytes(sk.verify_key)).decode()
-    )
+    monkeypatch.setattr(lic, "_PUBLIC_KEY_B64", base64.b64encode(bytes(sk.verify_key)).decode())
     return sk
 
 

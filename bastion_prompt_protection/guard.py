@@ -75,7 +75,7 @@ class Guard:
         return self._binary.model_version
 
     @property
-    def license_status(self) -> "LicenseStatus":
+    def license_status(self) -> LicenseStatus:
         """Offline status of the commercial license (Ed25519 signature + expiry),
         from `config.license_path` or the default locations. Non-blocking — read
         it for audit/logging. The free TINY model needs no license."""

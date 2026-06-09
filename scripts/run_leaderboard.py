@@ -132,7 +132,8 @@ def main() -> int:
                     "skip %s — this is a commercial, gated model. To include it, "
                     "obtain a license and access at https://bastionsoft.com, then "
                     "`huggingface-cli login` with the granted token. (%s)",
-                    display, exc,
+                    display,
+                    exc,
                 )
             else:
                 logger.warning("skip %s: %s", display, exc)

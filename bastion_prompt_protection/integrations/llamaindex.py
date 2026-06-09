@@ -24,7 +24,7 @@ documents never reach the LLM) without aborting the query.
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import Any
 
 from bastion_prompt_protection import Guard, GuardConfig, GuardResult, Preset
 from bastion_prompt_protection.exceptions import PromptInjectionError
@@ -60,7 +60,7 @@ class BastionGuardrailPostprocessor(BaseNodePostprocessor):
     """
 
     block: bool = True
-    threshold: Optional[float] = None
+    threshold: float | None = None
     screen_query: bool = True
     screen_nodes: bool = True
 
@@ -68,14 +68,14 @@ class BastionGuardrailPostprocessor(BaseNodePostprocessor):
 
     def __init__(
         self,
-        guard: Optional[Guard] = None,
+        guard: Guard | None = None,
         *,
         block: bool = True,
-        threshold: Optional[float] = None,
+        threshold: float | None = None,
         screen_query: bool = True,
         screen_nodes: bool = True,
         preset: str | Preset = Preset.TINY,
-        config: Optional[GuardConfig] = None,
+        config: GuardConfig | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -114,9 +114,9 @@ class BastionGuardrailPostprocessor(BaseNodePostprocessor):
 
     def _postprocess_nodes(
         self,
-        nodes: List[NodeWithScore],
-        query_bundle: Optional[QueryBundle] = None,
-    ) -> List[NodeWithScore]:
+        nodes: list[NodeWithScore],
+        query_bundle: QueryBundle | None = None,
+    ) -> list[NodeWithScore]:
         # 1) Direct injection — screen the user's query.
         if self.screen_query and query_bundle is not None:
             q = self._guard.protect(query_bundle.query_str)
@@ -126,7 +126,7 @@ class BastionGuardrailPostprocessor(BaseNodePostprocessor):
         # 2) Indirect injection — screen the retrieved content.
         if not self.screen_nodes:
             return nodes
-        kept: List[NodeWithScore] = []
+        kept: list[NodeWithScore] = []
         for nws in nodes:
             result = self._guard.protect(nws.node.get_content())
             if self._is_attack(result):
