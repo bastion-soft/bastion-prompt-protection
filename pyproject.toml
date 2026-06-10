@@ -44,9 +44,11 @@ dependencies = [
 license = [
     "pynacl>=1.5",
 ]
-# LangChain input-guardrail integration (bastion_prompt_protection.integrations.langchain).
+# LangChain integration (bastion_prompt_protection.integrations.langchain):
+# BastionGuardrailMiddleware (agent middleware) needs the full langchain package;
+# BastionGuardrail (LCEL Runnable) works with langchain-core, which langchain pulls in.
 langchain = [
-    "langchain-core>=0.3",
+    "langchain>=1.0",
 ]
 # LlamaIndex RAG guardrail integration (bastion_prompt_protection.integrations.llamaindex).
 llamaindex = [
@@ -77,7 +79,7 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.9",
     "pynacl>=1.5",  # so the license-verification tests run in dev/CI
-    "langchain-core>=0.3",  # so the LangChain integration tests run in dev/CI
+    "langchain>=1.0",  # so the LangChain integration + middleware tests run in dev/CI
     "llama-index-core>=0.11",  # so the LlamaIndex integration tests run in dev/CI
 ]
 

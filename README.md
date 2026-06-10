@@ -165,11 +165,18 @@ The entire source code is available on our Github.
 
 ## Integrations
 
-**LangChain** — drop Bastion in front of a chain as an input guardrail:
+**LangChain** — two entry points (`pip install "bastion-prompt-protection[langchain]"`):
 
-```bash
-pip install "bastion-prompt-protection[langchain]"
+For agents, add `BastionGuardrailMiddleware` to `create_agent`. It screens user input *and* tool results, so it also catches *indirect* injection carried in retrieved documents or tool output:
+
+```python
+from langchain.agents import create_agent
+from bastion_prompt_protection.integrations.langchain import BastionGuardrailMiddleware
+
+agent = create_agent(model="claude-sonnet-4-6", tools=[...], middleware=[BastionGuardrailMiddleware()])
 ```
+
+For LCEL chains, drop `BastionGuardrail` in front as an input guardrail:
 
 ```python
 from bastion_prompt_protection.integrations.langchain import BastionGuardrail
@@ -177,7 +184,7 @@ from bastion_prompt_protection.integrations.langchain import BastionGuardrail
 chain = BastionGuardrail() | prompt | llm   # injection attempts raise PromptInjectionError before the LLM
 ```
 
-Benign input flows through unchanged; attacks raise (or pass through with `block=False`). See [`examples/06_langchain/`](examples/06_langchain/README.md).
+A flagged agent turn ends the run with a refusal (or `exit_behavior="error"` to raise); a flagged chain input raises `PromptInjectionError` (or passes through with `block=False`). See [`examples/06_langchain/`](examples/06_langchain/README.md).
 
 **LlamaIndex** — screen a RAG pipeline as a node postprocessor (catches *indirect* injection in retrieved documents, not just the query):
 

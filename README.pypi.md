@@ -89,6 +89,20 @@ Guard(config=GuardConfig(model="my-org/my-model"))   # any HF repo — your own 
 
 Then optionally set `HF_HUB_OFFLINE=1` to forbid network access at runtime — useful in regulated environments where the model must be baked into a container at build time.
 
+## Integrations
+
+Framework adapters ship in the package — install the matching extra:
+
+- **LangChain** (`[langchain]`) — `BastionGuardrailMiddleware` for `create_agent` agents (screens user input *and* tool results, so it catches indirect injection), plus `BastionGuardrail`, an LCEL `Runnable` for chains.
+- **LlamaIndex** (`[llamaindex]`) — `BastionGuardrailPostprocessor` screens the query and retrieved nodes in a RAG pipeline.
+
+```python
+from langchain.agents import create_agent
+from bastion_prompt_protection.integrations.langchain import BastionGuardrailMiddleware
+
+agent = create_agent(model="claude-sonnet-4-6", tools=[...], middleware=[BastionGuardrailMiddleware()])
+```
+
 ## Other deployment options
 
 - **Raw ONNX without the SDK** — for compliance audits or non-Python ports

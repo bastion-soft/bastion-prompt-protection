@@ -22,6 +22,13 @@ image, ready to deploy).
 |---|---|
 | [`05_local_cache/`](05_local_cache/README.md) | Offline / air-gapped operation using the SDK with a pre-downloaded model cache |
 
+## Integrations
+
+| Recipe | When |
+|---|---|
+| [`06_langchain/`](06_langchain/README.md) | LangChain apps — `BastionGuardrailMiddleware` for `create_agent` agents, or `BastionGuardrail` as an LCEL input guardrail |
+| [`07_llamaindex/`](07_llamaindex/README.md) | LlamaIndex RAG — screen the query and retrieved nodes, catching indirect injection in retrieved documents |
+
 ## Reference behaviour
 
 A typical run on a consumer CPU:

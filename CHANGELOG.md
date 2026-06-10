@@ -2,6 +2,18 @@
 
 All notable changes to Bastion Prompt Protection are documented here. The format is loosely based on [Keep a Changelog](https://keepachangelog.com); this project follows [Semantic Versioning](https://semver.org).
 
+## [1.3.2] — 2026-06-11
+
+**Adds LangChain agent-middleware support. Purely additive — the existing `BastionGuardrail` Runnable and the rest of the API are unchanged.**
+
+### Added
+
+- **`BastionGuardrailMiddleware`** (`bastion_prompt_protection.integrations.langchain`) — LangChain agent middleware for `create_agent`. It screens in the `before_model` hook, which runs both for the incoming user turn and after tools return, so by default it catches **indirect** injection carried in retrieved documents or tool output (`check_tool_results=True`), not just the user's prompt. A flagged message ends the run with a refusal message (`exit_behavior="end"`, default), raises `PromptInjectionError` (`"error"`), or is replaced in place so the run continues (`"replace"`). Accepts the same `preset` / `config` / `guard` / `threshold` options as `BastionGuardrail`, plus `check_input`, `check_tool_results`, `exit_behavior`, and a templated `violation_message`.
+
+### Changed
+
+- **The `[langchain]` extra now installs `langchain>=1.0`** (previously `langchain-core>=0.3`), which the middleware requires. `BastionGuardrail` (the LCEL `Runnable`) continues to work with `langchain-core` alone; the guarded import means it still imports if only `langchain-core` is present.
+
 ## [1.3.1] — 2026-06-09
 
 ### Changed
