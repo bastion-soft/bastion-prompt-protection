@@ -54,6 +54,14 @@ langchain = [
 llamaindex = [
     "llama-index-core>=0.11",
 ]
+# OpenAI Agents SDK integration (bastion_prompt_protection.integrations.openai_agents).
+openai-agents = [
+    "openai-agents>=0.2",
+]
+# LiteLLM Proxy guardrail plugin (bastion_prompt_protection.integrations.litellm).
+litellm = [
+    "litellm>=1.40",
+]
 training = [
     "torch>=2.1",
     "transformers>=4.40",
@@ -81,6 +89,8 @@ dev = [
     "pynacl>=1.5",  # so the license-verification tests run in dev/CI
     "langchain>=1.0",  # so the LangChain integration + middleware tests run in dev/CI
     "llama-index-core>=0.11",  # so the LlamaIndex integration tests run in dev/CI
+    "openai-agents>=0.2",  # so the OpenAI Agents integration tests run in dev/CI
+    "litellm>=1.40",  # so the LiteLLM integration tests run in dev/CI
 ]
 
 [project.urls]

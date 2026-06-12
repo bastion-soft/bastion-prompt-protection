@@ -28,6 +28,8 @@ image, ready to deploy).
 |---|---|
 | [`06_langchain/`](06_langchain/README.md) | LangChain apps — `BastionGuardrailMiddleware` for `create_agent` agents, or `BastionGuardrail` as an LCEL input guardrail |
 | [`07_llamaindex/`](07_llamaindex/README.md) | LlamaIndex RAG — screen the query and retrieved nodes, catching indirect injection in retrieved documents |
+| [`08_openai_agents/`](08_openai_agents/README.md) | OpenAI Agents SDK — `make_input_guardrail()` as an `input_guardrail` that trips a tripwire before the agent's model call |
+| [`09_litellm/`](09_litellm/README.md) | LiteLLM Proxy — one `config.yaml` stanza protects every model in the gateway, zero application-code changes |
 
 ## Reference behaviour
 

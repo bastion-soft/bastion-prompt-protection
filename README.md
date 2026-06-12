@@ -186,19 +186,51 @@ chain = BastionGuardrail() | prompt | llm   # injection attempts raise PromptInj
 
 A flagged agent turn ends the run with a refusal (or `exit_behavior="error"` to raise); a flagged chain input raises `PromptInjectionError` (or passes through with `block=False`). See [`examples/06_langchain/`](examples/06_langchain/README.md).
 
-**LlamaIndex** — screen a RAG pipeline as a node postprocessor (catches *indirect* injection in retrieved documents, not just the query):
+**LlamaIndex** — three surfaces for a RAG pipeline:
 
 ```bash
 pip install "bastion-prompt-protection[llamaindex]"
 ```
 
 ```python
-from bastion_prompt_protection.integrations.llamaindex import BastionGuardrailPostprocessor
+from bastion_prompt_protection.integrations.llamaindex import (
+    BastionGuardQueryEngine,    # PRIMARY: blocks the query BEFORE retrieval
+    BastionNodePostprocessor,   # SECONDARY: screens retrieved nodes (indirect injection)
+    BastionWorkflowMixin,       # for Workflow-architecture apps
+)
 
-index.as_query_engine(node_postprocessors=[BastionGuardrailPostprocessor()])
+# Wrap any query engine — injection is blocked before the vector store is touched.
+safe_engine = BastionGuardQueryEngine(inner_engine=index.as_query_engine())
+
+# Or screen only the retrieved corpus for indirect injection:
+index.as_query_engine(node_postprocessors=[BastionNodePostprocessor()])
 ```
 
-Runs after retrieval, before the LLM; raises on a flagged query/node, or drops poisoned nodes with `block=False`. See [`examples/07_llamaindex/`](examples/07_llamaindex/README.md).
+`BastionGuardQueryEngine` is the only surface that gives genuine *pre-retrieval* query-path blocking (`screen_nodes=True` also screens retrieved docs). `BastionNodePostprocessor` runs before synthesis and raises on a flagged node, or drops poisoned nodes with `block=False`. See [`examples/07_llamaindex/`](examples/07_llamaindex/README.md).
+
+**OpenAI Agents SDK** — screen user input as an agent input guardrail (`pip install "bastion-prompt-protection[openai-agents]"`):
+
+```python
+from agents import Agent
+from bastion_prompt_protection.integrations.openai_agents import make_input_guardrail
+
+agent = Agent(name="my-agent", instructions="...", input_guardrails=[make_input_guardrail()])
+```
+
+The guardrail runs before the model call; an injection attempt raises `agents.InputGuardrailTripwireTriggered` (the `GuardResult` is on `exc.guardrail_result.output.output_info`). See [`examples/08_openai_agents/`](examples/08_openai_agents/README.md).
+
+**LiteLLM Proxy** — protect a gateway with one `config.yaml` stanza, zero app-code changes (`pip install "bastion-prompt-protection[litellm]"`):
+
+```yaml
+guardrails:
+  - guardrail_name: bastion-injection-guard
+    litellm_params:
+      guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+      mode: pre_call
+      default_on: true
+```
+
+Runs as a sidecar process, so **AGPL does not propagate to your application**. The last user message and tool results are screened before the LLM call; a flagged request is rejected with HTTP 400. See [`examples/09_litellm/`](examples/09_litellm/README.md).
 
 ## Detection pipeline
 
