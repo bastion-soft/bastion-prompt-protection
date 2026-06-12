@@ -11,6 +11,19 @@ runs as a standalone process, the AGPL license of ``bastion-prompt-protection``
 does **not** propagate to your application code — the guardrail runs across a
 network boundary.
 
+Loading the plugin
+------------------
+LiteLLM resolves a custom guardrail's dotted path as a **file relative to the
+config directory** — it does not import installed packages by dotted path. So
+drop a one-line shim next to your ``config.yaml`` and reference *that*::
+
+    # bastion_guardrail.py (next to config.yaml)
+    from bastion_prompt_protection.integrations.litellm import BastionGuardrailPlugin
+
+Running the proxy also needs the proxy server itself
+(``pip install "litellm[proxy]"``) in addition to
+``pip install "bastion-prompt-protection[litellm]"``.
+
 Quick start — ``config.yaml``::
 
     model_list:
@@ -22,7 +35,7 @@ Quick start — ``config.yaml``::
     guardrails:
       - guardrail_name: bastion-injection-guard
         litellm_params:
-          guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+          guardrail: bastion_guardrail.BastionGuardrailPlugin
           mode: pre_call          # screen input before the LLM call
           default_on: true        # protect every request automatically
 
@@ -39,7 +52,7 @@ Advanced — screen model output too::
     guardrails:
       - guardrail_name: bastion-injection-guard
         litellm_params:
-          guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+          guardrail: bastion_guardrail.BastionGuardrailPlugin
           mode: pre_call
           default_on: true
           screen_output: true   # also screen the LLM's response (default: false)
@@ -49,7 +62,7 @@ Advanced — custom threshold / preset / pass-through mode::
     guardrails:
       - guardrail_name: bastion-injection-guard
         litellm_params:
-          guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+          guardrail: bastion_guardrail.BastionGuardrailPlugin
           mode: pre_call
           default_on: true
           threshold: 0.7           # tighter than the default 0.50 attack_above
@@ -67,6 +80,7 @@ from bastion_prompt_protection.exceptions import PromptInjectionError
 
 try:
     from litellm.integrations.custom_guardrail import CustomGuardrail
+    from litellm.types.guardrails import GuardrailEventHooks
 except ImportError as exc:  # pragma: no cover - exercised only without the extra
     raise ImportError(
         "LiteLLM is required for this integration. Install it with: "
@@ -89,7 +103,7 @@ class BastionGuardrailPlugin(CustomGuardrail):
         guardrails:
           - guardrail_name: bastion-injection-guard
             litellm_params:
-              guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+              guardrail: bastion_guardrail.BastionGuardrailPlugin
               mode: pre_call
               default_on: true
 
@@ -99,7 +113,7 @@ class BastionGuardrailPlugin(CustomGuardrail):
         Runs **before** the LLM call.  Screens the last human/user message and
         (optionally) any tool/function-result messages to catch indirect
         injection smuggled through tool output.  A flagged message raises a
-        ``RejectedRequestError`` (HTTP 400) so the LLM is never called.
+        ``fastapi.HTTPException`` (HTTP 400) so the LLM is never called.
 
     ``async_post_call_success_hook`` (mode: ``post_call``, opt-in)
         Runs **after** the LLM returns.  Screens the model's reply for injected
@@ -137,7 +151,7 @@ class BastionGuardrailPlugin(CustomGuardrail):
                 threshold`` ⇒ attack).  Defaults to the Guard's own
                 ``attack_above`` (0.50 for the TINY preset).
             block: When ``True`` (default) a flagged input raises
-                ``RejectedRequestError`` (HTTP 400) and the LLM is never
+                ``fastapi.HTTPException`` (HTTP 400) and the LLM is never
                 called.  Set ``False`` for log-only / observe mode — the
                 request passes through but the detection result is still
                 accessible via :meth:`detect`.
@@ -181,10 +195,10 @@ class BastionGuardrailPlugin(CustomGuardrail):
         """Screen input messages before the LLM call.
 
         Returns the (possibly unmodified) ``data`` dict on a clean request, or
-        raises ``RejectedRequestError`` (HTTP 400) when ``block=True`` and a
+        raises ``fastapi.HTTPException`` (HTTP 400) when ``block=True`` and a
         prompt-injection attempt is detected.
         """
-        if not self.should_run_guardrail(data=data, event_type="pre_call"):
+        if not self.should_run_guardrail(data=data, event_type=GuardrailEventHooks.pre_call):
             return data
 
         messages: list[dict] = data.get("messages") or []
@@ -217,7 +231,7 @@ class BastionGuardrailPlugin(CustomGuardrail):
         if not self._screen_output:
             return
 
-        if not self.should_run_guardrail(data=data, event_type="post_call"):
+        if not self.should_run_guardrail(data=data, event_type=GuardrailEventHooks.post_call):
             return
 
         try:
@@ -315,17 +329,14 @@ def _screenable_texts(
 
 
 def _raise_rejected(message: str, data: dict) -> None:
-    """Raise the canonical LiteLLM exception to block a request with HTTP 400.
+    """Block the request with a hard HTTP 400 before the LLM is called.
 
-    ``RejectedRequestError`` is handled by the proxy's hook runner and
-    surfaced to the caller as a 400 Bad Request with the ``message`` as the
-    error detail.
+    A ``fastapi.HTTPException`` raised inside ``async_pre_call_hook`` propagates
+    through the proxy as a real ``400 Bad Request`` (vs. ``RejectedRequestError``,
+    which the proxy converts into a *graceful* 200 response whose content is the
+    refusal message). FastAPI is always present in the proxy runtime, so the
+    import is done lazily here to keep the base ``[litellm]`` install lean.
     """
-    from litellm.exceptions import RejectedRequestError
+    from fastapi import HTTPException
 
-    raise RejectedRequestError(
-        message=message,
-        model=data.get("model", ""),
-        llm_provider="",
-        request_data=data,
-    )
+    raise HTTPException(status_code=400, detail={"error": message})

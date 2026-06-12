@@ -77,27 +77,46 @@ def test_benign_user_message_passes_through() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_attack_user_message_raises_rejected_error() -> None:
-    from litellm.exceptions import RejectedRequestError
+def test_attack_user_message_blocks_with_http_400() -> None:
+    from fastapi import HTTPException
 
     plugin = BastionGuardrailPlugin(guard=_guard())
-    with pytest.raises(RejectedRequestError):
+    with pytest.raises(HTTPException) as excinfo:
         _pre_call(plugin, _messages("user", ATTACK))
+    assert excinfo.value.status_code == 400
 
 
-def test_attack_raises_carrying_message() -> None:
-    from litellm.exceptions import RejectedRequestError
+def test_attack_blocks_carrying_message() -> None:
+    from fastapi import HTTPException
 
     plugin = BastionGuardrailPlugin(guard=_guard())
-    with pytest.raises(RejectedRequestError) as excinfo:
+    with pytest.raises(HTTPException) as excinfo:
         _pre_call(plugin, _messages("user", ATTACK))
-    # The violation message should appear in the exception
-    assert "prompt-injection" in excinfo.value.message.lower()
+    # The violation message is carried in the exception detail.
+    assert "prompt-injection" in str(excinfo.value.detail).lower()
 
 
 # ---------------------------------------------------------------------------
 # block=False (observe / pass-through mode)
 # ---------------------------------------------------------------------------
+
+
+def test_blocks_when_event_hook_configured_like_the_proxy() -> None:
+    """Regression: the proxy constructs the plugin with ``event_hook`` set and
+    calls ``should_run_guardrail`` with a ``GuardrailEventHooks`` enum, which
+    does ``event_type.value`` internally. Passing a plain string there raised
+    ``AttributeError`` on every request — exercised only with event_hook set."""
+    from fastapi import HTTPException
+
+    plugin = BastionGuardrailPlugin(
+        guard=_guard(),
+        guardrail_name="bastion-injection-guard",
+        default_on=True,
+        event_hook="pre_call",  # how litellm wires `mode: pre_call`
+    )
+    with pytest.raises(HTTPException) as excinfo:
+        _pre_call(plugin, _messages("user", ATTACK))
+    assert excinfo.value.status_code == 400
 
 
 def test_block_false_passes_attack_through() -> None:
@@ -114,11 +133,11 @@ def test_block_false_passes_attack_through() -> None:
 
 def test_threshold_zero_blocks_any_nonzero_risk() -> None:
     """Setting threshold=0.0 should block even marginally risky text."""
-    from litellm.exceptions import RejectedRequestError
+    from fastapi import HTTPException
 
     plugin = BastionGuardrailPlugin(guard=_guard(), threshold=0.0)
     # ATTACK has positive risk — must be blocked even at threshold=0
-    with pytest.raises(RejectedRequestError):
+    with pytest.raises(HTTPException):
         _pre_call(plugin, _messages("user", ATTACK))
 
 
@@ -148,7 +167,7 @@ def test_detect_returns_verdict_without_raising() -> None:
 
 def test_tool_result_attack_is_blocked_by_default() -> None:
     """Tool messages are screened by default (screen_tool_results=True)."""
-    from litellm.exceptions import RejectedRequestError
+    from fastapi import HTTPException
 
     plugin = BastionGuardrailPlugin(guard=_guard())
     messages = [
@@ -156,7 +175,7 @@ def test_tool_result_attack_is_blocked_by_default() -> None:
         {"role": "assistant", "content": None, "tool_calls": [{}]},
         {"role": "tool", "content": ATTACK},
     ]
-    with pytest.raises(RejectedRequestError):
+    with pytest.raises(HTTPException):
         _pre_call(plugin, messages)
 
 
@@ -256,15 +275,15 @@ def test_post_call_hook_blocks_attack_in_output() -> None:
 
 
 def test_custom_violation_message_is_used() -> None:
-    from litellm.exceptions import RejectedRequestError
+    from fastapi import HTTPException
 
     plugin = BastionGuardrailPlugin(
         guard=_guard(),
         violation_message="Blocked — risk={risk:.2f} stage={stage}",
     )
-    with pytest.raises(RejectedRequestError) as excinfo:
+    with pytest.raises(HTTPException) as excinfo:
         _pre_call(plugin, _messages("user", ATTACK))
-    assert "Blocked" in excinfo.value.message
+    assert "Blocked" in str(excinfo.value.detail)
 
 
 # ---------------------------------------------------------------------------
@@ -274,7 +293,7 @@ def test_custom_violation_message_is_used() -> None:
 
 def test_content_block_list_is_extracted() -> None:
     """Messages whose content is a list of {type, text} blocks are handled."""
-    from litellm.exceptions import RejectedRequestError
+    from fastapi import HTTPException
 
     plugin = BastionGuardrailPlugin(guard=_guard())
     messages = [
@@ -285,7 +304,7 @@ def test_content_block_list_is_extracted() -> None:
             ],
         }
     ]
-    with pytest.raises(RejectedRequestError):
+    with pytest.raises(HTTPException):
         _pre_call(plugin, messages)
 
 

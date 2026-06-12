@@ -96,7 +96,7 @@ Framework adapters ship in the package — install the matching extra:
 - **LangChain** (`[langchain]`) — `BastionGuardrailMiddleware` for `create_agent` agents (screens user input *and* tool results, so it catches indirect injection), plus `BastionGuardrail`, an LCEL `Runnable` for chains.
 - **LlamaIndex** (`[llamaindex]`) — `BastionGuardQueryEngine` wraps a query engine to block injection *before* retrieval, `BastionNodePostprocessor` screens retrieved nodes for indirect injection, and `BastionWorkflowMixin` guards Workflow-based apps.
 - **OpenAI Agents SDK** (`[openai-agents]`) — `make_input_guardrail()` / `BastionInputGuardrail` screen user input as an agent input guardrail; an attack raises `InputGuardrailTripwireTriggered` before the model call.
-- **LiteLLM Proxy** (`[litellm]`) — `BastionGuardrailPlugin` registers via one `config.yaml` stanza to screen every request at the gateway. Runs as a sidecar process, so AGPL does not propagate to your application code.
+- **LiteLLM Proxy** (`[litellm]`) — `BastionGuardrailPlugin` registers via a `config.yaml` stanza plus a one-line shim file to screen every request at the gateway. Runs as a sidecar process, so AGPL does not propagate to your application code.
 
 ```python
 from langchain.agents import create_agent

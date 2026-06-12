@@ -40,11 +40,11 @@ model_list:
 guardrails:
   - guardrail_name: bastion-injection-guard
     litellm_params:
-      # Point at the plugin class using the module.ClassName dot-notation.
-      # The file must be importable from the directory where you run litellm.
-      # After `pip install bastion-prompt-protection[litellm]` the package is
-      # already on the Python path — no local file copy needed.
-      guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+      # LiteLLM loads a custom guardrail's dotted path as a FILE relative to
+      # this config's directory (it does not import installed packages by
+      # dotted path). So point at the `bastion_guardrail.py` shim that sits
+      # next to this file; the shim simply re-exports the pip-installed class.
+      guardrail: bastion_guardrail.BastionGuardrailPlugin
       mode: pre_call      # run the async_pre_call_hook (screens input, not output)
       default_on: true    # protect every request automatically
 
@@ -54,7 +54,7 @@ guardrails:
 #   guardrails:
 #     - guardrail_name: bastion-strict
 #       litellm_params:
-#         guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+#         guardrail: bastion_guardrail.BastionGuardrailPlugin
 #         mode: pre_call
 #         default_on: true
 #         threshold: 0.7              # raise the bar (default: 0.50)
@@ -65,7 +65,7 @@ guardrails:
 #   guardrails:
 #     - guardrail_name: bastion-bidirectional
 #       litellm_params:
-#         guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+#         guardrail: bastion_guardrail.BastionGuardrailPlugin
 #         mode:
 #           - pre_call
 #           - post_call
@@ -77,7 +77,7 @@ guardrails:
 #   guardrails:
 #     - guardrail_name: bastion-multilingual
 #       litellm_params:
-#         guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+#         guardrail: bastion_guardrail.BastionGuardrailPlugin
 #         mode: pre_call
 #         default_on: true
 #         preset: multilingual
