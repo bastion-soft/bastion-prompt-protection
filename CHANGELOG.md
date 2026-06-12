@@ -2,6 +2,20 @@
 
 All notable changes to Bastion Prompt Protection are documented here. The format is loosely based on [Keep a Changelog](https://keepachangelog.com); this project follows [Semantic Versioning](https://semver.org).
 
+## [1.3.3] — 2026-06-12
+
+**Adds three new framework integrations and refines the LlamaIndex one. Purely additive — the core API is unchanged.**
+
+### Added
+
+- **OpenAI Agents SDK integration** (`bastion_prompt_protection.integrations.openai_agents`, extra `[openai-agents]`) — `make_input_guardrail()` (one-liner) and `BastionInputGuardrail` (class) screen user input as an agent `input_guardrail`. A flagged turn trips the SDK's `InputGuardrailTripwireTriggered` before the model is called; the `GuardResult` is carried on `exc.guardrail_result.output.output_info`. Supports `threshold` / `preset` / `config` / bring-your-own `guard`, plus `name` and `run_in_parallel`.
+- **LiteLLM Proxy integration** (`bastion_prompt_protection.integrations.litellm`, extra `[litellm]`) — `BastionGuardrailPlugin`, a `CustomGuardrail` subclass wired in via a single `config.yaml` stanza. Screens the last user message and (by default) tool/function results in `async_pre_call_hook`, rejecting flagged requests with HTTP 400 before the LLM is called. Optional output screening (`screen_output=True` + `mode: post_call`), `block=False` log-only mode, and a templated `violation_message`. Runs as a sidecar process, so AGPL does not propagate to application code.
+- **LlamaIndex `BastionGuardQueryEngine` and `BastionWorkflowMixin`** — alongside the repositioned `BastionNodePostprocessor`, the integration now ships three surfaces: a `CustomQueryEngine` wrapper that blocks injection *before* retrieval (primary), a node postprocessor for indirect injection in retrieved documents (secondary), and a `Workflow` `@step` mixin.
+
+### Changed
+
+- **LlamaIndex `screen_nodes` now screens before synthesis.** When the wrapped engine exposes a `node_postprocessors` pipeline (as `index.as_query_engine()` does), `BastionGuardQueryEngine` inserts the screener into it so retrieved documents are checked *before* response synthesis. When the engine does not expose that pipeline it falls back to a post-hoc pass over `response.source_nodes` (`block=False` now correctly strips flagged nodes instead of silently discarding the filtered result).
+
 ## [1.3.2] — 2026-06-11
 
 **Adds LangChain agent-middleware support. Purely additive — the existing `BastionGuardrail` Runnable and the rest of the API are unchanged.**
