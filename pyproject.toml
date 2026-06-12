@@ -91,6 +91,7 @@ dev = [
     "llama-index-core>=0.11",  # so the LlamaIndex integration tests run in dev/CI
     "openai-agents>=0.2",  # so the OpenAI Agents integration tests run in dev/CI
     "litellm>=1.40",  # so the LiteLLM integration tests run in dev/CI
+    "fastapi>=0.110",  # the LiteLLM guardrail blocks via fastapi.HTTPException (a proxy-runtime dep); needed to test the block path
 ]
 
 [project.urls]

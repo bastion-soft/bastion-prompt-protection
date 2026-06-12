@@ -318,6 +318,38 @@ def test_make_input_guardrail_custom_name() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Full Runner.run() orchestration -- attack path (no API key needed)
+# ---------------------------------------------------------------------------
+
+
+def test_runner_run_attack_raises_tripwire_before_model() -> None:
+    """End-to-end through the real SDK Runner: an attack trips the input
+    guardrail *before* any model call, so this needs no OPENAI_API_KEY.
+
+    This exercises the orchestration layer the other tests skip -- they call
+    ``guardrail.run()`` directly; here the SDK's ``Runner`` dispatches the
+    guardrail and converts a tripped guardrail into the public exception.
+    """
+    from agents import Agent, Runner
+    from agents.exceptions import InputGuardrailTripwireTriggered
+
+    agent = Agent(
+        name="bastion-test-agent",
+        instructions="You are a helpful assistant.",
+        # run_in_parallel=False -> guardrail runs strictly before the model.
+        input_guardrails=[make_input_guardrail(guard=_guard(), run_in_parallel=False)],
+    )
+
+    async def _run() -> None:
+        await Runner.run(agent, ATTACK)
+
+    with pytest.raises(InputGuardrailTripwireTriggered) as excinfo:
+        asyncio.run(_run())
+    guard_result = excinfo.value.guardrail_result.output.output_info
+    assert guard_result.is_attack is True
+
+
+# ---------------------------------------------------------------------------
 # PromptInjectionError is re-exported
 # ---------------------------------------------------------------------------
 

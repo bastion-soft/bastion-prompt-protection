@@ -219,13 +219,19 @@ agent = Agent(name="my-agent", instructions="...", input_guardrails=[make_input_
 
 The guardrail runs before the model call; an injection attempt raises `agents.InputGuardrailTripwireTriggered` (the `GuardResult` is on `exc.guardrail_result.output.output_info`). See [`examples/08_openai_agents/`](examples/08_openai_agents/README.md).
 
-**LiteLLM Proxy** — protect a gateway with one `config.yaml` stanza, zero app-code changes (`pip install "bastion-prompt-protection[litellm]"`):
+**LiteLLM Proxy** — protect a gateway with a `config.yaml` stanza + a one-line shim, zero app-code changes (`pip install "bastion-prompt-protection[litellm]"`):
+
+```python
+# bastion_guardrail.py — next to config.yaml (litellm loads custom guardrails as a
+# file relative to the config, so a shim re-exporting the installed class is needed)
+from bastion_prompt_protection.integrations.litellm import BastionGuardrailPlugin
+```
 
 ```yaml
 guardrails:
   - guardrail_name: bastion-injection-guard
     litellm_params:
-      guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+      guardrail: bastion_guardrail.BastionGuardrailPlugin
       mode: pre_call
       default_on: true
 ```

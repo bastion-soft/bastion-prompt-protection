@@ -1,8 +1,8 @@
 # Example 9 — LiteLLM Proxy guardrail
 
 Screen every LLM request routed through a [LiteLLM Proxy](https://docs.litellm.ai/docs/proxy/quick_start)
-for prompt-injection and jailbreak attempts — **with a single config.yaml stanza,
-zero application-code changes**.
+for prompt-injection and jailbreak attempts — **with a config.yaml stanza, a
+one-line shim file, and zero changes to your application code**.
 
 Because the proxy runs as a standalone process your application code calls it
 over HTTP.  The AGPL licence of `bastion-prompt-protection` therefore does
@@ -13,8 +13,15 @@ automatically.
 ## Prerequisites
 
 ```bash
-pip install "bastion-prompt-protection[litellm]"
+pip install "bastion-prompt-protection[litellm]"   # the guardrail plugin
+pip install "litellm[proxy]"                        # the proxy server itself
 ```
+
+**The shim file.** LiteLLM loads a custom guardrail's dotted path as a *file
+relative to the config directory* — it does not import installed packages by
+dotted path. So this folder ships a one-line [`bastion_guardrail.py`](bastion_guardrail.py)
+next to `config.yaml` that re-exports the installed class, and the config points
+at `bastion_guardrail.BastionGuardrailPlugin`. Keep the shim beside your config.
 
 Environment variables the proxy needs at startup:
 
@@ -90,7 +97,7 @@ infrastructure**, and inference is ~5 ms warm (CPU).
 guardrails:
   - guardrail_name: bastion-injection-guard
     litellm_params:
-      guardrail: bastion_prompt_protection.integrations.litellm.BastionGuardrailPlugin
+      guardrail: bastion_guardrail.BastionGuardrailPlugin   # the shim next to this config
       mode: pre_call          # "pre_call" | "post_call" | ["pre_call", "post_call"]
       default_on: true        # protect every request (no per-request header needed)
       threshold: 0.7          # optional — tighten above the default 0.50
@@ -112,13 +119,16 @@ services:
     ports:
       - "4000:4000"
     volumes:
+      # Mount BOTH the config and the shim into the same directory, so litellm's
+      # file-relative loader can find bastion_guardrail.py next to config.yaml.
       - ./config.yaml:/app/config.yaml:ro
+      - ./bastion_guardrail.py:/app/bastion_guardrail.py:ro
     command: ["--config", "/app/config.yaml"]
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
-    # Install the guardrail package at container start.
-    # In production, bake it into a custom image instead.
+    # The litellm image already includes the proxy server; just add the guardrail
+    # package at container start. In production, bake it into a custom image instead.
     entrypoint:
       - /bin/sh
       - -c
