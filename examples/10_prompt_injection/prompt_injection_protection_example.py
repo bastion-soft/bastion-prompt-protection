@@ -52,24 +52,28 @@ bastion_tokenizer = Tokenizer.from_file("./tokenizer.json")
 with open("./temperature.json") as _f:
     bastion_temperature = json.load(_f)["temperature"]
 
+
 def get_bastion_risk_score(user_prompt: str) -> float:
     enc = bastion_tokenizer.encode(user_prompt)
     sequence = bastion_session.run(
-        output_names = None, 
-        input_feed = { "input_ids": np.array( [enc.ids], dtype=np.int64 ), 
-                       "attention_mask": np.array( [enc.attention_mask], dtype=np.int64 )
-                     }
-        )
+        output_names=None,
+        input_feed={
+            "input_ids": np.array([enc.ids], dtype=np.int64),
+            "attention_mask": np.array([enc.attention_mask], dtype=np.int64),
+        },
+    )
 
-    logits = sequence [0][0] / bastion_temperature
+    logits = sequence[0][0] / bastion_temperature
     shifted = logits - logits.max()
     risk = float(np.exp(shifted)[1] / np.exp(shifted).sum())
     return risk
 
+
 YOUR_LLM_MODEL = "claude-haiku-4-5-20251001"
 YOUR_ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
-llm_client = AsyncAnthropic(api_key = YOUR_ANTHROPIC_API_KEY)
+llm_client = AsyncAnthropic(api_key=YOUR_ANTHROPIC_API_KEY)
+
 
 async def analyze_payment(user_prompt: str) -> str:
 
@@ -87,19 +91,21 @@ async def analyze_payment(user_prompt: str) -> str:
     for block in llm_message.content:
         if block.type == "text":
             return block.text
-            
+
     return None
+
 
 async def main():
 
     # expected: 'PAID'
-    print( await analyze_payment( TIMELY_PAYMENT ) )
+    print(await analyze_payment(TIMELY_PAYMENT))
 
     # expected: 'OVERDUE'
-    print( await analyze_payment( OVERDUE_PAYMENT ) )
-    
+    print(await analyze_payment(OVERDUE_PAYMENT))
+
     # expected: 'OVERDUE' , prompt inection tries to make it look 'PAID', actual: ERROR
-    print( await analyze_payment( OVERDUE_PAYMENT_WITH_PROMPT_INJECTION ) )
+    print(await analyze_payment(OVERDUE_PAYMENT_WITH_PROMPT_INJECTION))
+
 
 if __name__ == "__main__":
     asyncio.run(main())

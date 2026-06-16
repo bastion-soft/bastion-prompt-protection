@@ -514,7 +514,7 @@
   <div class="nav-brand">
     <div class="logo">Bastion Soft</div>
     <div class="title">Prompt Protection</div>
-    <span class="version">v1.3.0</span>
+    <span class="version">v1.3.4</span>
   </div>
 
   <div class="nav-section">Overview</div>
@@ -569,7 +569,7 @@
   <section id="intro">
     <h1>
       Bastion Prompt Protection
-      <span class="tagline">Developer documentation — v1.3.0</span>
+      <span class="tagline">Developer documentation — v1.3.4</span>
     </h1>
 
     <p>
@@ -879,7 +879,7 @@ result.latency_ms     <span class="cm"># per-call wall-clock latency</span>
 result.is_attack      <span class="cm"># bool convenience property</span>
 
 <span class="cm"># Version identifiers — include in audit logs</span>
-guard.sdk_version     <span class="cm"># "1.3.0"</span>
+guard.sdk_version     <span class="cm"># "1.3.4"</span>
 guard.model_version   <span class="cm"># "c75249a" — 7-char commit SHA of the HF snapshot</span></code></pre>
 
     <div class="callout tip">
@@ -1214,7 +1214,7 @@ containers:
         <span class="badge badge-blue">property</span>
       </div>
       <div class="api-block-body">
-        <p>The installed <code>bastion-prompt-protection</code> package version. Example: <code>"1.3.0"</code>.</p>
+        <p>The installed <code>bastion-prompt-protection</code> package version. Example: <code>"1.3.4"</code>.</p>
       </div>
     </div>
 
@@ -1465,13 +1465,13 @@ config <span class="op">=</span> GuardConfig(
     </div>
 
     <h3>GET /health</h3>
-    <p>Returns <code>200 {"status": "ok", "version": "1.3.0"}</code> when the Guard is initialized and ready. Returns <code>503</code> otherwise. Use as Kubernetes <code>readinessProbe</code>.</p>
+    <p>Returns <code>200 {"status": "ok", "version": "1.3.4"}</code> when the Guard is initialized and ready. Returns <code>503</code> otherwise. Use as Kubernetes <code>readinessProbe</code>.</p>
 
     <h3>GET /</h3>
     <p>Returns service metadata: name, version, endpoint list, docs URL.</p>
     <pre data-lang="json"><code>{
   <span class="st">"service"</span>:   <span class="st">"bastion-prompt-protection"</span>,
-  <span class="st">"version"</span>:   <span class="st">"1.3.0"</span>,
+  <span class="st">"version"</span>:   <span class="st">"1.3.4"</span>,
   <span class="st">"endpoints"</span>: [<span class="st">"/health"</span>, <span class="st">"/protect"</span>],
   <span class="st">"docs"</span>:      <span class="st">"/docs"</span>
 }</code></pre>
