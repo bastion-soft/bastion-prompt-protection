@@ -1,4 +1,4 @@
-# Examples — four ways to use Bastion Prompt Protection
+# Examples — various ways to use Bastion Prompt Protection
 
 Each pattern is self-contained: its own folder with a tutorial
 `README.md` and runnable code. Pick the one that matches where you are
@@ -30,6 +30,7 @@ image, ready to deploy).
 | [`07_llamaindex/`](07_llamaindex/README.md) | LlamaIndex RAG — screen the query and retrieved nodes, catching indirect injection in retrieved documents |
 | [`08_openai_agents/`](08_openai_agents/README.md) | OpenAI Agents SDK — `make_input_guardrail()` as an `input_guardrail` that trips a tripwire before the agent's model call |
 | [`09_litellm/`](09_litellm/README.md) | LiteLLM Proxy — one `config.yaml` stanza protects every model in the gateway, zero application-code changes |
+| [`10_prompt_injection/`](10_prompt_injection/README.md) | End-to-end attack-and-defense demo — indirect prompt injection inside a structured invoice field, caught by a raw-ONNX guard before the LLM call |
 
 ## Reference behaviour
 
