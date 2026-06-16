@@ -25,18 +25,19 @@ guard.model_version      # "c75249a" — identifier for the loaded model build
 
 ## How it scores on adversarial benchmarks
 
-Leading open prompt-injection detectors across four held-out benchmarks. The free model and every competitor reproduce from public weights via `python -m scripts.run_leaderboard`; the commercial multilingual row requires a license. Full 11-model table + latency in [`eval/results/leaderboard.md`](eval/results/leaderboard.md).
+Leading open prompt-injection detectors across four held-out benchmarks, all reproducible from public weights via `python -m scripts.run_leaderboard`. Full 10-model table + latency in [`eval/results/leaderboard.md`](eval/results/leaderboard.md).
 
 | Model | Params | Avg AUC | Avg F1 |
 |---|---:|---:|---:|
-| **bastion-prompt-protection** (free) | 70M | **0.984** | **0.936** |
-| bastion multilingual (commercial) | 280M | 0.991 | 0.947 |
+| **bastion-prompt-protection** (free) | 70M | **0.991** | **0.943** |
 | sentinel | 395M | 0.959 | 0.858 |
 | wolf-defender | 0.3B | 0.954 | 0.893 |
 | protectai v2 | 184M | 0.850 | 0.599 |
 | deepset injection | 184M | 0.766 | 0.696 |
 
-The free model tops every open competitor on average; the commercial multilingual model goes further and adds six languages. Per-benchmark numbers and latency in the full leaderboard.
+The free 70M model tops every open competitor on average — including ones 4–6× its size. Per-benchmark numbers and latency in the full leaderboard.
+
+It also leads on **indirect / structured injection** — attacks hidden inside JSON tool results, documents, and agent interactions (Z-Edgar, BIPIA, InjecAgent, AgentDojo, HackAPrompt, TensorTrust): **0.945 avg AUC**, ahead of every open detector. Full table in [`eval/results/indirect.md`](eval/results/indirect.md).
 
 ## How it scores on real traffic
 
@@ -44,14 +45,13 @@ The free model tops every open competitor on average; the commercial multilingua
 
 | Model | Params | WildChat | LMSYS | **Avg** |
 |---|---:|---:|---:|---:|
-| **bastion-prompt-protection** (free) | 70M | **1.26%** | **1.72%** | **1.49%** |
-| bastion multilingual (commercial) | 280M | 1.04% | 1.50% | 1.27% |
+| **bastion-prompt-protection** (free) | 70M | **1.18%** | **1.30%** | **1.24%** |
 | protectai v2 | 184M | 7.60% | 10.04% | 8.82% |
 | sentinel | 395M | 23.82% | 23.38% | 23.60% |
 | wolf-defender | 0.3B | 18.80% | 29.26% | 24.03% |
 | deepset injection | 184M | 67.20% | 64.58% | 65.89% |
 
-Reproducible via `python -m scripts.measure_false_positives`. Raw JSON committed at [`eval/results/false_positives.json`](eval/results/false_positives.json).
+Reproducible via `python -m scripts.measure_false_positives`. Full table in [`eval/results/false_positives.md`](eval/results/false_positives.md) (raw JSON: [`false_positives.json`](eval/results/false_positives.json)).
 
 ## Editions
 

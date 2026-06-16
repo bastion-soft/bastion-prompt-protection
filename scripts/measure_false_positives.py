@@ -65,12 +65,13 @@ BASELINES: list[tuple[str, str, int | list[int]]] = [
         "bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1",
         1,
     ),
-    # Commercial multilingual model (gated) — scored if your token has access.
-    (
-        "bastion multilingual (280M, commercial)",
-        "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
-        1,
-    ),
+    # Commercial multilingual model — parked while the multilingual model is being
+    # updated; re-enable this entry once the new version ships.
+    # (
+    #     "bastion multilingual (280M, commercial)",
+    #     "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
+    #     1,
+    # ),
     # Open-source competitors (all public).
     ("wolf-defender (0.3B)", "patronus-studio/wolf-defender-prompt-injection", 1),
     ("wolf-defender-small (0.1B)", "patronus-studio/wolf-defender-prompt-injection-small", 1),
@@ -89,9 +90,8 @@ BASELINES: list[tuple[str, str, int | list[int]]] = [
 ]
 
 
-# Deterministic sampling — same seed used by the training-side helper that
-# excludes these exact prompts from training corpora that source from
-# WildChat / LMSYS. Anyone running this script gets the same 5000 prompts.
+# Deterministic sampling: the same seed + reservoir gives everyone the same 5000
+# prompts per dataset, and those prompts are held out from the model's training.
 FPR_EVAL_SEED = 42
 DEFAULT_N = 5000
 DEFAULT_DATASETS = ["wildchat", "lmsys"]
@@ -379,7 +379,51 @@ def main() -> int:
     }
     out_path.write_text(json.dumps(payload, indent=2))
     print(f"✓ Wrote {out_path}")
+
+    # Markdown twin (styled like leaderboard.md / indirect.md), for the README.
+    md_path = out_path.with_suffix(".md")
+    md_path.write_text(_format_markdown(rows, list(datasets.keys())))
+    print(f"✓ Wrote {md_path}")
     return 0
+
+
+_FPR_DISPLAY = {"wildchat": "WildChat", "lmsys": "LMSYS"}
+
+
+def _format_markdown(rows: list[FPRRow], datasets: list[str]) -> str:
+    """Markdown FPR table (lower = better), styled like leaderboard.md."""
+    by_runner: dict[str, dict[str, float]] = {}
+    for r in rows:
+        by_runner.setdefault(r.runner, {})[r.dataset] = r.fpr
+
+    def _avg(d: dict[str, float]) -> float:
+        vals = [d[k] for k in datasets if k in d]
+        return sum(vals) / len(vals) if vals else 1.0
+
+    order = sorted(by_runner, key=lambda n: _avg(by_runner[n]))  # lowest FPR first
+    headers = [_FPR_DISPLAY.get(d, d) for d in datasets]
+
+    lines = ["## False-positive rate (benign flagged as attack, lower = better)", ""]
+    lines.append("| Model | " + " | ".join(headers) + " | **Avg** |")
+    lines.append("|" + "---|" * (len(headers) + 2))
+    for runner in order:
+        d = by_runner[runner]
+        vals, present = [], []
+        for k in datasets:
+            if k in d:
+                vals.append(f"{d[k] * 100:.2f}%")
+                present.append(d[k])
+            else:
+                vals.append("—")
+        avg = f"**{sum(present) / len(present) * 100:.2f}%**" if present else "—"
+        lines.append(f"| {runner} | " + " | ".join(vals) + f" | {avg} |")
+    lines.append("")
+    lines.append("Benign real-user openers (WildChat / LMSYS first-user turns); the share "
+                 "each model wrongly flags as an attack. Lower is better.")
+    lines.append("")
+    lines.append(f"_Generated {time.strftime('%Y-%m-%d')} via "
+                 "`python -m scripts.measure_false_positives`._")
+    return "\n".join(lines) + "\n"
 
 
 def _parse_args() -> argparse.Namespace:

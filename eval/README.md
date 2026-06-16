@@ -17,8 +17,6 @@ python -m scripts.eval_indirect              # → eval/results/indirect.json   
 
 All three scripts score the free `bastion-prompt-protection` model plus the leading open-source baselines, as **pure HF classifiers** (not via the SDK) so every model is judged the same way. The model id, parameter count, and attack-label index for every baseline live in the `BASELINES` constant in `scripts/run_leaderboard.py` — that single list is the contract, shared across scripts.
 
-> The commercial **multilingual** model is currently **parked** in the public run (being updated); its `BASELINES` entry is commented out. The free 70M model and all competitors run with no token.
-
 ## Three questions, three scripts
 
 A useful prompt-injection detector has to win on three unrelated axes:
@@ -91,9 +89,9 @@ LMSYS-Chat-1M requires license acceptance at <https://huggingface.co/datasets/lm
 
 Meta's `Prompt-Guard-86M` requires gated-access approval at <https://huggingface.co/meta-llama/Prompt-Guard-86M>. Same deal — script skips it if you don't have access.
 
-### The Bastion multilingual model is commercial (currently parked)
+### The Bastion multilingual model is commercial
 
-There is a commercial **multilingual** model (7 languages) — see <https://bastionsoft.com>. Its `BASELINES` entry is **commented out** in `run_leaderboard.py` right now because the multilingual model is being updated; it will be re-added once the new version ships. The free 70M model is what the public benchmark is about.
+There is a commercial **multilingual** model (7 languages) — see <https://bastionsoft.com>. The free 70M model is what the public benchmark here is about.
 
 ## Indirect / structured injection — `scripts/eval_indirect.py`
 

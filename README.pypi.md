@@ -43,16 +43,17 @@ The first call downloads the model from the Hugging Face Hub and caches it under
 
 ## How it scores on adversarial benchmarks
 
-Leading open prompt-injection detectors across four held-out benchmarks. The free model and every competitor reproduce from public weights via `python -m scripts.run_leaderboard` in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection); the commercial multilingual row requires a license.
+Leading open prompt-injection detectors across four held-out benchmarks, all reproducible from public weights via `python -m scripts.run_leaderboard` in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection).
 
 | Model | Params | Avg AUC | Avg F1 |
 |---|---:|---:|---:|
-| **bastion-prompt-protection** (free) | 70M | **0.984** | **0.936** |
-| bastion multilingual (commercial) | 280M | 0.991 | 0.947 |
+| **bastion-prompt-protection** (free) | 70M | **0.991** | **0.943** |
 | sentinel | 395M | 0.959 | 0.858 |
 | wolf-defender | 0.3B | 0.954 | 0.893 |
 | protectai v2 | 184M | 0.850 | 0.599 |
 | deepset injection | 184M | 0.766 | 0.696 |
+
+It also leads on **indirect / structured injection** (attacks hidden in JSON tool results, documents, agent interactions): **0.945 avg AUC**, ahead of every open detector — `python -m scripts.eval_indirect`.
 
 ## How it scores on real traffic
 
@@ -60,8 +61,7 @@ Leading open prompt-injection detectors across four held-out benchmarks. The fre
 
 | Model | Params | WildChat | LMSYS | **Avg** |
 |---|---:|---:|---:|---:|
-| **bastion-prompt-protection** (free) | 70M | **1.26%** | **1.72%** | **1.49%** |
-| bastion multilingual (commercial) | 280M | 1.04% | 1.50% | 1.27% |
+| **bastion-prompt-protection** (free) | 70M | **1.18%** | **1.30%** | **1.24%** |
 | protectai v2 | 184M | 7.60% | 10.04% | 8.82% |
 | sentinel | 395M | 23.82% | 23.38% | 23.60% |
 | wolf-defender | 0.3B | 18.80% | 29.26% | 24.03% |

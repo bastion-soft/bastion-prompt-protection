@@ -2,6 +2,19 @@
 
 All notable changes to Bastion Prompt Protection are documented here. The format is loosely based on [Keep a Changelog](https://keepachangelog.com); this project follows [Semantic Versioning](https://semver.org).
 
+## [1.3.4] — 2026-06-16
+
+**Documentation only — no code or API changes.** Refreshes the published benchmark numbers and adds a new evaluation axis. The SDK and its behavior are identical to 1.3.3.
+
+### Changed
+
+- Refreshed the README / PyPI benchmark tables for the latest free 70M model: **0.991 avg AUC / 0.943 avg F1** across the four held-out adversarial benchmarks, and **1.24%** false-positive rate on real chat traffic (WildChat / LMSYS).
+
+### Added
+
+- **Indirect / structured-injection benchmark** (`scripts/eval_indirect.py` → `eval/results/indirect.{json,md}`): scores detectors on injection hidden inside data — JSON/XML agent interactions, documents, and poisoned tool outputs (Z-Edgar, BIPIA, InjecAgent, AgentDojo, HackAPrompt, TensorTrust). Reported separately from the direct leaderboard.
+- A markdown twin for the false-positive results (`eval/results/false_positives.md`), generated automatically by `scripts/measure_false_positives.py`.
+
 ## [1.3.3] — 2026-06-12
 
 **Adds three new framework integrations and refines the LlamaIndex one. Purely additive — the core API is unchanged.**
