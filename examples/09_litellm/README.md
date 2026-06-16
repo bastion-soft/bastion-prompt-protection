@@ -23,6 +23,11 @@ dotted path. So this folder ships a one-line [`bastion_guardrail.py`](bastion_gu
 next to `config.yaml` that re-exports the installed class, and the config points
 at `bastion_guardrail.BastionGuardrailPlugin`. Keep the shim beside your config.
 
+> **Coming soon — no shim needed.** A native first-class integration is in
+> progress upstream in LiteLLM. Once it ships in a LiteLLM release you'll be able
+> to write `guardrail: bastion` directly (no shim file, no dotted path). This
+> page covers the approach that works on every current LiteLLM version.
+
 Environment variables the proxy needs at startup:
 
 | Variable | Purpose |

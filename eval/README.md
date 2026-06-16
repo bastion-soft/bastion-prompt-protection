@@ -10,22 +10,26 @@ Reproducible benchmark harness for `bastion-prompt-protection`. The numbers in t
 pip install -e ".[eval]"
 huggingface-cli login   # optional, only for the gated models/datasets
 
-python -m scripts.run_leaderboard            # → eval/results/leaderboard.json
-python -m scripts.measure_false_positives    # → eval/results/false_positives.json
+python -m scripts.run_leaderboard            # → eval/results/leaderboard.json     (direct attacks)
+python -m scripts.measure_false_positives    # → eval/results/false_positives.json (over-defense)
+python -m scripts.eval_indirect              # → eval/results/indirect.json         (indirect/structured)
 ```
 
-Both scripts score the free `bastion-prompt-protection` model plus the leading open-source baselines — and, for license holders whose HF token has access, the commercial multilingual model. The model id, parameter count, and attack-label index for every baseline live at the top of each script in a `BASELINES` constant — those are the contract.
+All three scripts score the free `bastion-prompt-protection` model plus the leading open-source baselines, as **pure HF classifiers** (not via the SDK) so every model is judged the same way. The model id, parameter count, and attack-label index for every baseline live in the `BASELINES` constant in `scripts/run_leaderboard.py` — that single list is the contract, shared across scripts.
 
-## Two questions, two scripts
+> The commercial **multilingual** model is currently **parked** in the public run (being updated); its `BASELINES` entry is commented out. The free 70M model and all competitors run with no token.
 
-A useful prompt-injection detector has to win on two unrelated axes:
+## Three questions, three scripts
+
+A useful prompt-injection detector has to win on three unrelated axes:
 
 | Question | Script | Artifact | Datasets |
 |---|---|---|---|
-| Does it catch attacks? | `scripts/run_leaderboard.py` | `results/leaderboard.json` | rogue-security, xTRam1/test, S-Labs/test, JailbreakBench |
+| Does it catch direct attacks? | `scripts/run_leaderboard.py` | `results/leaderboard.json` | rogue-security, xTRam1/test, S-Labs/test, JailbreakBench |
 | Does it spare real users? | `scripts/measure_false_positives.py` | `results/false_positives.json` | WildChat-1M, LMSYS-Chat-1M (first-user turns) |
+| Does it catch **indirect / structured** injection? | `scripts/eval_indirect.py` | `results/indirect.json` | Z-Edgar, BIPIA, InjecAgent, AgentDojo, HackAPrompt, TensorTrust |
 
-A high AUC on adversarial benchmarks isn't worth much if the model also flags 28% of real user messages. A 0% FPR isn't worth much if the model misses obvious jailbreaks. v1.1 was the version where bastion started winning on both at the same time.
+A high AUC on adversarial benchmarks isn't worth much if the model also flags 28% of real user messages — or if it only catches injection in plain prose and misses it hidden in a JSON tool result. The free tiny model wins on all three at once.
 
 ## Adversarial benchmarks — `scripts/run_leaderboard.py`
 
@@ -77,7 +81,7 @@ python -m scripts.measure_false_positives \
 
 ### Sampling is deterministic
 
-Both datasets are reservoir-sampled with `seed=42` from the streaming HF dataset (so we never download the full 1M-row file). The same seed is shared with the training-side eval-holdout helper — those 5000 prompts are excluded from the bastion training corpus, so the FPR number is genuinely held-out.
+Both datasets are reservoir-sampled with `seed=42` from the streaming HF dataset (so we never download the full 1M-row file). Those 5000 prompts are held out from the model's training data, so the FPR number is genuinely held-out.
 
 ### LMSYS is gated
 
@@ -87,9 +91,34 @@ LMSYS-Chat-1M requires license acceptance at <https://huggingface.co/datasets/lm
 
 Meta's `Prompt-Guard-86M` requires gated-access approval at <https://huggingface.co/meta-llama/Prompt-Guard-86M>. Same deal — script skips it if you don't have access.
 
-### The Bastion multilingual model is commercial
+### The Bastion multilingual model is commercial (currently parked)
 
-The `bastion multilingual (280M, commercial)` row points at a gated, commercial model. It's scored automatically if your HF token has been granted access (i.e. you hold a license); otherwise the script prints a notice — *obtain a license at <https://bastionsoft.com>* — and skips it cleanly, exactly like the other gated entries. The free 70M model needs none of this.
+There is a commercial **multilingual** model (7 languages) — see <https://bastionsoft.com>. Its `BASELINES` entry is **commented out** in `run_leaderboard.py` right now because the multilingual model is being updated; it will be re-added once the new version ships. The free 70M model is what the public benchmark is about.
+
+## Indirect / structured injection — `scripts/eval_indirect.py`
+
+Standard prompt-injection benchmarks are plain prose. The harder, increasingly common case is injection hidden **inside the data an app feeds its model** — a JSON tool result, a document, an agent interaction. This script scores the same baselines (pure model, same as the leaderboard) on held-out indirect/structured sets, written to a **separate** `results/indirect.json` — *not* folded into the direct leaderboard average, because it's a distinct capability axis and competitors aren't built for it.
+
+| Set | Source | What it is |
+|---|---|---|
+| `zedgar` | Z-Edgar/Agent-IPI-Structured-Interaction-Datasets-v2 (test split) | injection in JSON/XML agent interactions |
+| `bipia` | microsoft/BIPIA | injection appended to documents (email/table/code) |
+| `injecagent` | uiuc-kang-lab/InjecAgent (`_enhanced` split) | poisoned tool outputs |
+| `agentdojo` | agentdojo (`pip install agentdojo`) | agentic injection-task goals |
+| `hackaprompt` | hackaprompt/hackaprompt-dataset (**gated**) | crowdsourced injection attempts |
+| `tensortrust` | qxcv/tensor-trust | hijacking/extraction attacks |
+
+```bash
+python -m scripts.eval_indirect
+python -m scripts.eval_indirect --dataset zedgar --dataset agentdojo   # subset
+python -m scripts.eval_indirect --limit 200                            # smoke run
+```
+
+The output reports AUC + F1 per set and an **Avg** across them, scored pure-model for every model. `hackaprompt` is gated (needs the HF token); `agentdojo` needs its pip package — both **skip cleanly** if unavailable, like the other gated entries.
+
+## Held out from training
+
+Every set scored here is held out from the model's training data — that's the contract behind the numbers, and it's why they reproduce from public weights with the scripts above. Re-run any script to verify a published claim yourself.
 
 ## Temperature calibration is auto-loaded
 
@@ -97,17 +126,17 @@ The `bastion multilingual (280M, commercial)` row points at a gated, commercial 
 
 ## Output schemas
 
-Both artifacts share a top-level shape:
+All three artifacts share a top-level shape:
 
 ```json
 {
   "schema_version": 1,
-  "generated_at": "2026-05-18T11:06:21Z",
+  "generated_at": "2026-06-16T11:06:21Z",
   "rows": [ ... ]
 }
 ```
 
-`leaderboard.json` rows include `auc`, `f1`, `precision`, `recall`, `fpr_at_tpr_99`, `fpr_at_tpr_95`, `p50_latency_ms`, `p95_latency_ms`. `false_positives.json` rows include `fpr`, `mean_risk`, `median_risk`, `p95_risk`, and three risk-band counts (`safe < 0.20`, `uncertain ∈ [0.20, 0.85)`, `attack ≥ 0.85`) — the bands help when comparing models whose calibration differs.
+`leaderboard.json` and `indirect.json` rows include `benchmark_key`, `auc`, `f1`, `precision`, `recall`, `fpr_at_tpr_99`, `fpr_at_tpr_95`, `p50_latency_ms`, `p95_latency_ms`. `false_positives.json` rows include `fpr`, `mean_risk`, `median_risk`, `p95_risk`, and three risk-band counts (`safe < 0.20`, `uncertain ∈ [0.20, 0.85)`, `attack ≥ 0.85`) — the bands help when comparing models whose calibration differs.
 
 ## Adding a new baseline
 
@@ -125,10 +154,14 @@ Re-run the relevant script — both scripts cache nothing model-side, so old run
 
 | File | Role |
 |---|---|
-| `data.py` | Loaders for each held-out adversarial benchmark |
+| `data.py` | Loaders for each held-out **direct** adversarial benchmark |
+| `indirect_data.py` | Loaders for the **indirect/structured** sets (Z-Edgar/BIPIA/InjecAgent/AgentDojo/HackAPrompt/TensorTrust) |
 | `metrics.py` | AUC, F1, precision, recall, FPR at chosen TPR |
 | `runners.py` | `BastionRunner` (local SDK) and `TransformersRunner` (any HF model id, temperature-aware) |
 | `benchmark_suite.py` | Multi-runner × multi-benchmark grid |
 | `benchmark.py` | Single-runner, single-benchmark CLI |
-| `results/leaderboard.json` | Latest published AUC/F1 numbers (committed snapshot) |
+| `results/leaderboard.json` | Latest published direct AUC/F1 numbers (committed snapshot) |
 | `results/false_positives.json` | Latest published FPR numbers (committed snapshot) |
+| `results/indirect.json` | Latest published indirect/structured numbers (committed snapshot) |
+
+(The two leaderboard scripts live in `scripts/`: `run_leaderboard.py`, `eval_indirect.py`, `measure_false_positives.py`.)
