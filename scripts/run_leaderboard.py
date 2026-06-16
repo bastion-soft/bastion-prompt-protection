@@ -37,6 +37,8 @@ logger = logging.getLogger(__name__)
 # license holder (with a granted HF token) can score them in the same run; for
 # everyone else they fail to download and are skipped with a clear message
 # pointing at how to get access. See the skip handler in main().
+# (Dormant for now: the multilingual BASELINES entry is commented out while the
+# multilingual model is being updated; kept so re-enabling is a one-line change.)
 COMMERCIAL_MODELS = {
     "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
 }
@@ -55,13 +57,13 @@ BASELINES: list[tuple[str, str, int | list[int]]] = [
         "bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1",
         1,
     ),
-    # The commercial multilingual model (gated). Scored automatically if your
-    # HF token has been granted access; skipped with a notice otherwise.
-    (
-        "bastion multilingual (280M, commercial)",
-        "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
-        1,
-    ),
+    # The commercial multilingual model — PARKED while the multilingual model is
+    # being updated. Re-enable this entry once the new version ships.
+    # (
+    #     "bastion multilingual (280M, commercial)",
+    #     "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
+    #     1,
+    # ),
     # --- Open-source competitors (all public, all reproducible) -----------
     ("wolf-defender (0.3B)", "patronus-studio/wolf-defender-prompt-injection", 1),
     ("wolf-defender-small (0.1B)", "patronus-studio/wolf-defender-prompt-injection-small", 1),

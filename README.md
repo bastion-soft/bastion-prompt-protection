@@ -238,6 +238,8 @@ guardrails:
 
 Runs as a sidecar process, so **AGPL does not propagate to your application**. The last user message and tool results are screened before the LLM call; a flagged request is rejected with HTTP 400. See [`examples/09_litellm/`](examples/09_litellm/README.md).
 
+> A native first-class LiteLLM integration (`guardrail: bastion`, no shim) is in progress upstream; the snippet above works on every current LiteLLM version.
+
 ## Detection pipeline
 
 1. **Structural detectors** — catch attacks that don't survive tokenization: chat-template control tokens (`<|im_start|>`, `[INST]`, `<<SYS>>`), zero-width / homoglyph obfuscation, base64 payloads, spaced-letter obfuscation, fake end-of-prompt delimiters. Sub-millisecond short-circuit when one fires.

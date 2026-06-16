@@ -48,3 +48,6 @@ memory/
 # Claude Code
 .claude/
 CLAUDE.md
+
+# Internal / confidential strategy docs — never publish
+internal/
