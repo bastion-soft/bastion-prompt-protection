@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+
 from anthropic import AsyncAnthropic
-from anthropic.types import Message
 from dotenv import load_dotenv
 
 load_dotenv()

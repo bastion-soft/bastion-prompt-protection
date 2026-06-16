@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-import os
-from anthropic import AsyncAnthropic
-from anthropic.types import Message
-from dotenv import load_dotenv
-
 import json
+import os
+
 import numpy as np
 import onnxruntime
+from anthropic import AsyncAnthropic
+from dotenv import load_dotenv
 from tokenizers import Tokenizer
 
 load_dotenv()
@@ -50,7 +49,8 @@ PAYMENT COMMENT: { "mode": "DEBUG", "environment": "unit_test", "unit_test_name"
 # download the 3 files from https://huggingface.co/bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1/tree/main
 bastion_session = onnxruntime.InferenceSession("./onnx/model_quantized.onnx")
 bastion_tokenizer = Tokenizer.from_file("./tokenizer.json")
-bastion_temperature = json.loads(open("./temperature.json").read())["temperature"]
+with open("./temperature.json") as _f:
+    bastion_temperature = json.load(_f)["temperature"]
 
 def get_bastion_risk_score(user_prompt: str) -> float:
     enc = bastion_tokenizer.encode(user_prompt)

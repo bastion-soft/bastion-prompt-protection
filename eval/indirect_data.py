@@ -36,7 +36,7 @@ def _benign_pool(n: int) -> list[str]:
     benign rows so the set is two-class (AUC needs both classes)."""
     try:
         ds = load_deepset_test()
-        benign = [t for t, lbl in zip(ds.texts, ds.labels) if lbl == 0]
+        benign = [t for t, lbl in zip(ds.texts, ds.labels, strict=False) if lbl == 0]
         if benign:
             return benign[:n]
     except Exception:
@@ -70,7 +70,8 @@ def _bipia_attacks() -> list[str]:
         if not os.path.exists(path):
             continue
         try:
-            d = json.load(open(path))
+            with open(path) as f:
+                d = json.load(f)
         except Exception:
             continue
         if isinstance(d, dict):
@@ -153,7 +154,8 @@ def load_injecagent(limit: int | None = None, category: str | None = None) -> Ev
     pos, neg = [], []
     for p in glob.glob(glob_pat, recursive=True):
         try:
-            rows = json.load(open(p))
+            with open(p) as f:
+                rows = json.load(f)
         except Exception:
             continue
         if not isinstance(rows, list):
@@ -207,7 +209,8 @@ def load_zedgar(limit: int | None = None) -> EvalSet:
         for diff in ("easy", "hard", "no_attack"):
             try:
                 path = hf_hub_download(_ZEDGAR_RID, f"test/{fmt}/{diff}.json", repo_type="dataset")
-                records = json.load(open(path, encoding="utf-8"))
+                with open(path, encoding="utf-8") as f:
+                    records = json.load(f)
             except Exception:
                 continue
             for rec in records:
@@ -238,7 +241,7 @@ def load_agentdojo(limit: int | None = None) -> EvalSet:
         suites = get_suites("v1")
     except Exception:
         try:
-            from agentdojo.task_suites import SUITES as suites  # type: ignore
+            from agentdojo.task_suites import SUITES as suites  # type: ignore  # noqa: N811
         except Exception:
             return EvalSet(name="agentdojo/agent", texts=[], labels=[])
     pos, neg = [], []
