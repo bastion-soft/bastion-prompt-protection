@@ -85,9 +85,7 @@ def load_bipia(limit: int | None = None, domain: str | None = None) -> EvalSet:
     """domain=None pools all document types; or one of email/table/code."""
     m = limit or 400
     _clone("https://github.com/microsoft/BIPIA", "BIPIA")
-    pattern = (
-        f"BIPIA/benchmark/{domain}/test.jsonl" if domain else "BIPIA/benchmark/**/test.jsonl"
-    )
+    pattern = f"BIPIA/benchmark/{domain}/test.jsonl" if domain else "BIPIA/benchmark/**/test.jsonl"
     name = f"bipia/{domain}" if domain else "bipia/indirect"
     contexts: list[str] = []
     for p in glob.glob(pattern, recursive=True):
@@ -187,7 +185,11 @@ _ZEDGAR_RID = "Z-Edgar/Agent-IPI-Structured-Interaction-Datasets-v2"
 
 
 def _zedgar_text(v) -> str | None:
-    return json.dumps(v, ensure_ascii=False) if isinstance(v, dict) else (v if isinstance(v, str) else None)
+    return (
+        json.dumps(v, ensure_ascii=False)
+        if isinstance(v, dict)
+        else (v if isinstance(v, str) else None)
+    )
 
 
 def _mostly_ascii(s: str, thresh: float = 0.85) -> bool:

@@ -73,12 +73,17 @@ def main() -> int:
         logger.info("loading %s (%s)", display, model_id)
         try:
             runner = TransformersRunner(
-                model_id=model_id, attack_label_id=attack_label,
-                max_length=512, batch_size=args.batch_size, name=display,
+                model_id=model_id,
+                attack_label_id=attack_label,
+                max_length=512,
+                batch_size=args.batch_size,
+                name=display,
             )
         except Exception as exc:
             if model_id in COMMERCIAL_MODELS:
-                logger.warning("skip %s — commercial/gated (need a license + granted token). %s", display, exc)
+                logger.warning(
+                    "skip %s — commercial/gated (need a license + granted token). %s", display, exc
+                )
             else:
                 logger.warning("skip %s: %s", display, exc)
             continue
@@ -140,10 +145,12 @@ def _format_markdown(rows: list[tuple[str, SuiteRow]], bench_order: list[str]) -
     lines: list[str] = []
     lines += _table("auc", "AUC")
     lines += _table("f1", "F1 @ threshold=0.5")
-    lines.append("Held-out indirect/structured sets, scored pure-model. Reported "
-                 "separately from the direct leaderboard — competitors target plain-prose "
-                 "injection, so this is a distinct capability axis, not folded into the "
-                 "main average.")
+    lines.append(
+        "Held-out indirect/structured sets, scored pure-model. Reported "
+        "separately from the direct leaderboard — competitors target plain-prose "
+        "injection, so this is a distinct capability axis, not folded into the "
+        "main average."
+    )
     lines.append("")
     lines.append(f"_Generated {time.strftime('%Y-%m-%d')} via `python -m scripts.eval_indirect`._")
     return "\n".join(lines) + "\n"
@@ -162,8 +169,12 @@ def _write_json(rows: list[tuple[str, SuiteRow]]) -> str:
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="scripts.eval_indirect")
-    p.add_argument("--dataset", action="append", default=[],
-                   help="indirect set(s) to run; repeat. Default: the pooled set.")
+    p.add_argument(
+        "--dataset",
+        action="append",
+        default=[],
+        help="indirect set(s) to run; repeat. Default: the pooled set.",
+    )
     p.add_argument("--limit", type=int, default=None, help="cap samples per set (smoke testing)")
     p.add_argument("--threshold", type=float, default=0.5)
     p.add_argument("--batch-size", type=int, default=32)

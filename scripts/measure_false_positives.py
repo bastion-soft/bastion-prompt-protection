@@ -418,11 +418,14 @@ def _format_markdown(rows: list[FPRRow], datasets: list[str]) -> str:
         avg = f"**{sum(present) / len(present) * 100:.2f}%**" if present else "—"
         lines.append(f"| {runner} | " + " | ".join(vals) + f" | {avg} |")
     lines.append("")
-    lines.append("Benign real-user openers (WildChat / LMSYS first-user turns); the share "
-                 "each model wrongly flags as an attack. Lower is better.")
+    lines.append(
+        "Benign real-user openers (WildChat / LMSYS first-user turns); the share "
+        "each model wrongly flags as an attack. Lower is better."
+    )
     lines.append("")
-    lines.append(f"_Generated {time.strftime('%Y-%m-%d')} via "
-                 "`python -m scripts.measure_false_positives`._")
+    lines.append(
+        f"_Generated {time.strftime('%Y-%m-%d')} via `python -m scripts.measure_false_positives`._"
+    )
     return "\n".join(lines) + "\n"
 
 
