@@ -18,20 +18,26 @@ from bastion_prompt_protection.telemetry.reporter import ReportContext, Reporter
 class ReportingGuard:
     """Wrap a :class:`Guard` so each ``protect`` also reports — by composition.
 
-        guard = Guard()
-        reporter = build_reporter(TelemetryConfig.from_env())
-        safe = ReportingGuard(guard, reporter)
-        safe.protect("…")   # detects, then fire-and-forget reports (direct/user_prompt)
+    guard = Guard()
+    reporter = build_reporter(TelemetryConfig.from_env())
+    safe = ReportingGuard(guard, reporter)
+    safe.protect("…")   # detects, then fire-and-forget reports (direct/user_prompt)
     """
 
-    def __init__(self, guard: Any, reporter: Reporter, *, context: ReportContext | None = None) -> None:
+    def __init__(
+        self, guard: Any, reporter: Reporter, *, context: ReportContext | None = None
+    ) -> None:
         self._guard = guard
         self._reporter = reporter
         self._context = context or ReportContext()
 
     def protect(self, prompt: str) -> Any:
         result = self._guard.protect(prompt)
-        ctx = replace(self._context, content=prompt) if self._context.content is None else self._context
+        ctx = (
+            replace(self._context, content=prompt)
+            if self._context.content is None
+            else self._context
+        )
         with contextlib.suppress(Exception):  # telemetry must never break detection
             self._reporter.report(make_record(result, ctx, self._guard))
         return result

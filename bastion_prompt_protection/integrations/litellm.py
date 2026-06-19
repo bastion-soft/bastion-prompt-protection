@@ -208,8 +208,13 @@ class BastionGuardrailPlugin(CustomGuardrail):
 
         for text, origin, vector in _screenable_texts(messages, self._screen_tool_results):
             result = self._guard.protect(text)
-            self._reporter.report(make_record(result, ReportContext(
-                vector=vector, origin=origin, source="litellm", content=text), self._guard))
+            self._reporter.report(
+                make_record(
+                    result,
+                    ReportContext(vector=vector, origin=origin, source="litellm", content=text),
+                    self._guard,
+                )
+            )
             if self._is_attack(result):
                 if self._block:
                     _raise_rejected(self._format(result), data)
@@ -247,9 +252,15 @@ class BastionGuardrailPlugin(CustomGuardrail):
                         content = choice.message.content
                         if content and isinstance(content, str):
                             result = self._guard.protect(content)
-                            self._reporter.report(make_record(result, ReportContext(
-                                direction="output", source="litellm", content=content),
-                                self._guard))
+                            self._reporter.report(
+                                make_record(
+                                    result,
+                                    ReportContext(
+                                        direction="output", source="litellm", content=content
+                                    ),
+                                    self._guard,
+                                )
+                            )
                             if self._is_attack(result):
                                 raise ValueError(self._format(result))
         except ImportError:  # pragma: no cover

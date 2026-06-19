@@ -139,8 +139,15 @@ class BastionGuardrail(Runnable[Any, Any]):
     def _screen(self, input: Any) -> Any:
         text = self._extract(input)
         result = self._guard.protect(text)
-        self._reporter.report(make_record(result, ReportContext(
-            vector="direct", origin="user_prompt", source="langchain", content=text), self._guard))
+        self._reporter.report(
+            make_record(
+                result,
+                ReportContext(
+                    vector="direct", origin="user_prompt", source="langchain", content=text
+                ),
+                self._guard,
+            )
+        )
         if self._block and self._is_attack(result):
             raise PromptInjectionError(result)
         return input
@@ -270,10 +277,18 @@ class BastionGuardrailMiddleware(_MiddlewareBase):
             result = self._guard.protect(text)
             # Tool results are the indirect-injection surface (origin=tool_result).
             is_tool = isinstance(msg, ToolMessage)
-            self._reporter.report(make_record(result, ReportContext(
-                vector="indirect" if is_tool else "direct",
-                origin="tool_result" if is_tool else "user_prompt",
-                source="langchain", content=text), self._guard))
+            self._reporter.report(
+                make_record(
+                    result,
+                    ReportContext(
+                        vector="indirect" if is_tool else "direct",
+                        origin="tool_result" if is_tool else "user_prompt",
+                        source="langchain",
+                        content=text,
+                    ),
+                    self._guard,
+                )
+            )
             if not self._is_attack(result):
                 continue
             if self._exit_behavior == "error":

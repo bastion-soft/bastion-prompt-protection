@@ -152,9 +152,15 @@ class BastionInputGuardrail:
         ) -> GuardrailFunctionOutput:
             text = _extract_text(input)
             result = _self._guard.protect(text)
-            _self._reporter.report(make_record(result, ReportContext(
-                vector="direct", origin="user_prompt", source="openai-agents",
-                content=text), _self._guard))
+            _self._reporter.report(
+                make_record(
+                    result,
+                    ReportContext(
+                        vector="direct", origin="user_prompt", source="openai-agents", content=text
+                    ),
+                    _self._guard,
+                )
+            )
             triggered = _self._is_attack(result)
             return GuardrailFunctionOutput(
                 tripwire_triggered=triggered,

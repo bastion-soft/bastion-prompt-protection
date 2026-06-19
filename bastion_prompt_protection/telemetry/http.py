@@ -21,7 +21,9 @@ def make_http_sink(
     def sink(batch: list[dict[str, Any]]) -> None:
         data = json.dumps({"events": batch}).encode("utf-8")
         req = urllib.request.Request(
-            url, data=data, method="POST",
+            url,
+            data=data,
+            method="POST",
             headers={"Content-Type": "application/json", "X-API-Key": api_key},
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:

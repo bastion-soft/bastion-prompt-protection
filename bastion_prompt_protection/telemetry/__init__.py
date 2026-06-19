@@ -32,20 +32,29 @@ def build_reporter(config: TelemetryConfig | None) -> Reporter:
     if config.http_enabled:
         from bastion_prompt_protection.telemetry.http import make_http_sink
 
-        reporters.append(BackgroundReporter(
-            make_http_sink(config.endpoint, config.api_key),  # type: ignore[arg-type]
-            sample_rate=config.sample_rate))
+        reporters.append(
+            BackgroundReporter(
+                make_http_sink(config.endpoint, config.api_key),  # type: ignore[arg-type]
+                sample_rate=config.sample_rate,
+            )
+        )
     if config.otel_enabled:
         from bastion_prompt_protection.telemetry.otel import make_otel_sink
 
-        reporters.append(BackgroundReporter(
-            make_otel_sink(config.otel_endpoint), sample_rate=config.sample_rate))  # type: ignore[arg-type]
+        reporters.append(
+            BackgroundReporter(make_otel_sink(config.otel_endpoint), sample_rate=config.sample_rate)
+        )  # type: ignore[arg-type]
     if config.langsmith_enabled:
         from bastion_prompt_protection.telemetry.langsmith import make_langsmith_sink
 
-        reporters.append(BackgroundReporter(
-            make_langsmith_sink(api_key=config.langsmith_api_key, project=config.langsmith_project),
-            sample_rate=config.sample_rate))
+        reporters.append(
+            BackgroundReporter(
+                make_langsmith_sink(
+                    api_key=config.langsmith_api_key, project=config.langsmith_project
+                ),
+                sample_rate=config.sample_rate,
+            )
+        )
 
     if not reporters:
         return NoopReporter()

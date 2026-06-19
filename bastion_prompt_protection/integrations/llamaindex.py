@@ -197,9 +197,18 @@ class BastionNodePostprocessor(BaseNodePostprocessor):
         # Optional: screen the query string (opt-in, off by default).
         if self._screen_query and query_bundle is not None:
             result = self._guard.protect(query_bundle.query_str)
-            self._reporter.report(make_record(result, ReportContext(
-                vector="direct", origin="user_prompt", source="llamaindex",
-                content=query_bundle.query_str), self._guard))
+            self._reporter.report(
+                make_record(
+                    result,
+                    ReportContext(
+                        vector="direct",
+                        origin="user_prompt",
+                        source="llamaindex",
+                        content=query_bundle.query_str,
+                    ),
+                    self._guard,
+                )
+            )
             if _is_attack(result, self._threshold):
                 raise PromptInjectionError(result)
 
@@ -209,9 +218,15 @@ class BastionNodePostprocessor(BaseNodePostprocessor):
         for node in nodes:
             text = node.node.get_content()
             result = self._guard.protect(text)
-            self._reporter.report(make_record(result, ReportContext(
-                vector="indirect", origin="rag_document", source="llamaindex",
-                content=text), self._guard))
+            self._reporter.report(
+                make_record(
+                    result,
+                    ReportContext(
+                        vector="indirect", origin="rag_document", source="llamaindex", content=text
+                    ),
+                    self._guard,
+                )
+            )
             if _is_attack(result, self._threshold):
                 if self._block:
                     raise PromptInjectionError(result)
@@ -363,9 +378,18 @@ class BastionGuardQueryEngine(CustomQueryEngine):
         """Screen the query, then delegate to the inner engine."""
         if self._screen_query:
             result = self._guard.protect(query_str)
-            self._reporter.report(make_record(result, ReportContext(
-                vector="direct", origin="user_prompt", source="llamaindex",
-                content=query_str), self._guard))
+            self._reporter.report(
+                make_record(
+                    result,
+                    ReportContext(
+                        vector="direct",
+                        origin="user_prompt",
+                        source="llamaindex",
+                        content=query_str,
+                    ),
+                    self._guard,
+                )
+            )
             if _is_attack(result, self._threshold) and self._block:
                 raise PromptInjectionError(result)
 
@@ -388,9 +412,18 @@ class BastionGuardQueryEngine(CustomQueryEngine):
         """Screen the query asynchronously, then delegate to the inner engine."""
         if self._screen_query:
             result = self._guard.protect(query_str)
-            self._reporter.report(make_record(result, ReportContext(
-                vector="direct", origin="user_prompt", source="llamaindex",
-                content=query_str), self._guard))
+            self._reporter.report(
+                make_record(
+                    result,
+                    ReportContext(
+                        vector="direct",
+                        origin="user_prompt",
+                        source="llamaindex",
+                        content=query_str,
+                    ),
+                    self._guard,
+                )
+            )
             if _is_attack(result, self._threshold) and self._block:
                 raise PromptInjectionError(result)
 

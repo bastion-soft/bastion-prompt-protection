@@ -65,8 +65,10 @@ class TelemetryConfig:
             api_key=os.environ.get("BASTION_TELEMETRY_KEY"),
             otel_endpoint=os.environ.get("BASTION_OTEL_ENDPOINT"),
             langsmith=_env_bool("BASTION_LANGSMITH"),
-            langsmith_api_key=os.environ.get("LANGSMITH_API_KEY") or os.environ.get("LANGCHAIN_API_KEY"),
-            langsmith_project=os.environ.get("LANGSMITH_PROJECT") or os.environ.get("LANGCHAIN_PROJECT"),
+            langsmith_api_key=os.environ.get("LANGSMITH_API_KEY")
+            or os.environ.get("LANGCHAIN_API_KEY"),
+            langsmith_project=os.environ.get("LANGSMITH_PROJECT")
+            or os.environ.get("LANGCHAIN_PROJECT"),
             sample_rate=_env_float("BASTION_TELEMETRY_SAMPLE_RATE", 1.0),
             client_id=os.environ.get("BASTION_CLIENT_ID"),
             source=os.environ.get("BASTION_SOURCE", "sdk"),
