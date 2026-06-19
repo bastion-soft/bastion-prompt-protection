@@ -2,10 +2,10 @@
 
 Run:
     pip install bastion-prompt-protection
-    python examples/01_basic.py
+    python examples/02_sdk/main.py
 
 On first call, the SDK downloads the model from the HuggingFace Hub
-(~280 MB, cached afterwards) and caches it under ~/.cache/huggingface/.
+(~90 MB, cached afterwards) and caches it under ~/.cache/huggingface/.
 """
 
 from __future__ import annotations
@@ -123,5 +123,5 @@ print(f"  p99 latency   : {sorted(latencies)[int(0.99 * n)]:.2f} ms")
 
 print()
 print("━" * 72)
-print("  Done. See examples/02_local_cache.py for an offline-capable setup.")
+print("  Done. See examples/05_local_cache/main.py for an offline-capable setup.")
 print("━" * 72)

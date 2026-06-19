@@ -2,6 +2,27 @@
 
 All notable changes to Bastion Prompt Protection are documented here. The format is loosely based on [Keep a Changelog](https://keepachangelog.com); this project follows [Semantic Versioning](https://semver.org).
 
+## [1.3.5] — 2026-06-19
+
+**Adds an opt-in telemetry / reporting subsystem and provenance-aware reporting in every integration. Detection is unchanged; all reporting is off by default (zero egress).**
+
+### Added
+
+- **`bastion_prompt_protection.telemetry`** — a composable reporting layer, decoupled from `Guard`. With no configuration it is a no-op (`NoopReporter`) — no background thread, no network. Components: `Reporter`, `NoopReporter`, `BackgroundReporter` (queued, non-blocking, retrying), `MultiReporter` (fan-out), `ReportContext`, `make_record`, `default_reporter()`/`build_reporter()`, and `ReportingGuard` (a detect-and-report wrapper).
+- **Three independent reporting channels**, each enabled on its own: native HTTP → the Bastion gateway console (`POST /v1/events:batch`), OpenTelemetry OTLP → your collector (extra `[otel]`), and LangSmith (extra `[langsmith]`). Configured via `BASTION_TELEMETRY_*` env vars (`TelemetryConfig`).
+- **`ReportContext` is now public** (`from bastion_prompt_protection import ReportContext`), carrying attack provenance: `vector` (`direct`/`indirect`), `origin` (`user_prompt`/`rag_document`/`tool_result`/`agent_step`), `direction`, and `source`.
+
+### Changed
+
+- **All framework integrations now emit provenance-tagged detections through the reporter.** LangChain, LlamaIndex, OpenAI Agents, and LiteLLM tag user input as `direct`/`user_prompt` and retrieved documents / tool results as `indirect` (`rag_document` / `tool_result`), so detections stream to the configured channel(s) with full context. Reporting stays off until a channel is configured; blocking behaviour is unchanged.
+- Added the OpenTelemetry SDK + OTLP HTTP exporter to the `[dev]` extra so `pip install -e ".[dev]" && pytest` runs the full suite green out of the box.
+
+### Fixed
+
+- Corrected the first-run model-download size in the README, PyPI description, and the `02_sdk` example: the SDK fetches only the quantized ONNX model plus the tokenizer (**~90 MB**), not the full fp32 weights — the previous "~280 MB" figure was wrong.
+- Fixed stale `python examples/...` run paths in the `02_sdk` and `05_local_cache` example docstrings and READMEs (they pointed at pre-reorganisation filenames such as `01_basic.py` / `02_local_cache.py`).
+- Synced the `sdk_version` values shown in README / PyPI / example output to the current release.
+
 ## [1.3.4] — 2026-06-16
 
 **Documentation only — no code or API changes.** Refreshes the published benchmark numbers and adds a new evaluation axis. The SDK and its behavior are identical to 1.3.3.

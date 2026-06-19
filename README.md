@@ -19,7 +19,7 @@ result.stage_reached     # "binary"  ("heuristics" for structural detections)
 result.latency_ms        # ~5
 
 # Identity info lives on the Guard instance (consistent across all calls):
-guard.sdk_version        # "1.3.0"
+guard.sdk_version        # "1.3.5"
 guard.model_version      # "c75249a" — identifier for the loaded model build
 ```
 
@@ -239,6 +239,21 @@ guardrails:
 Runs as a sidecar process, so **AGPL does not propagate to your application**. The last user message and tool results are screened before the LLM call; a flagged request is rejected with HTTP 400. See [`examples/09_litellm/`](examples/09_litellm/README.md).
 
 > A native first-class LiteLLM integration (`guardrail: bastion`, no shim) is in progress upstream; the snippet above works on every current LiteLLM version.
+
+## Telemetry & monitoring
+
+Detection runs entirely in-process and reports **nothing** by default — zero egress, no background thread. Opt in by setting environment variables; the SDK fans out to whichever channels you configure, each independent:
+
+```bash
+# Bastion Lens console (self-hosted) — POSTs detections to /v1/events:batch
+export BASTION_TELEMETRY_ENDPOINT=https://your-bastion-host
+export BASTION_TELEMETRY_KEY=<ingest-key>
+
+export BASTION_OTEL_ENDPOINT=http://collector:4318   # OpenTelemetry — pip install ".[otel]"
+export BASTION_LANGSMITH=1                            # LangSmith     — pip install ".[langsmith]"
+```
+
+Reporting is non-blocking and never changes the verdict. Each record carries provenance — `vector` (`direct` / `indirect`) and `origin` (`user_prompt` / `rag_document` / `tool_result` / `agent_step`) — so you see not just *that* an attack was caught but *where it entered*. The framework integrations populate this automatically. The reporting layer lives in [`bastion_prompt_protection/telemetry/`](bastion_prompt_protection/telemetry/).
 
 ## Detection pipeline
 

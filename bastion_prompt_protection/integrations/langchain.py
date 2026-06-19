@@ -44,8 +44,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from bastion_prompt_protection import Guard, GuardConfig, GuardResult, Preset
+from bastion_prompt_protection import Guard, GuardConfig, GuardResult, Preset, ReportContext
 from bastion_prompt_protection.exceptions import PromptInjectionError
+from bastion_prompt_protection.telemetry import Reporter, default_reporter, make_record
 
 try:
     from langchain_core.runnables import Runnable, RunnableConfig
@@ -99,6 +100,7 @@ class BastionGuardrail(Runnable[Any, Any]):
         input_key: str | None = None,
         preset: str | Preset = Preset.TINY,
         config: GuardConfig | None = None,
+        reporter: Reporter | None = None,
     ) -> None:
         """
         Args:
@@ -111,11 +113,14 @@ class BastionGuardrail(Runnable[Any, Any]):
             input_key: When the chain input is a dict, the key whose value to
                 screen. If ``None``, all string values are screened together.
             preset / config: Forwarded to :class:`Guard` when ``guard`` is None.
+            reporter: Telemetry reporter (composed in, not coupled to Guard).
+                Defaults to the env-configured reporter (no-op unless set).
         """
         self._guard = guard or Guard(preset=preset, config=config)
         self._threshold = threshold
         self._block = block
         self._input_key = input_key
+        self._reporter = reporter or default_reporter()
 
     # -- public helpers ------------------------------------------------------
 
@@ -134,6 +139,8 @@ class BastionGuardrail(Runnable[Any, Any]):
     def _screen(self, input: Any) -> Any:
         text = self._extract(input)
         result = self._guard.protect(text)
+        self._reporter.report(make_record(result, ReportContext(
+            vector="direct", origin="user_prompt", source="langchain", content=text), self._guard))
         if self._block and self._is_attack(result):
             raise PromptInjectionError(result)
         return input
@@ -202,6 +209,7 @@ class BastionGuardrailMiddleware(_MiddlewareBase):
         check_tool_results: bool = True,
         exit_behavior: str = "end",
         violation_message: str = _DEFAULT_VIOLATION_MESSAGE,
+        reporter: Reporter | None = None,
     ) -> None:
         """
         Args:
@@ -234,6 +242,7 @@ class BastionGuardrailMiddleware(_MiddlewareBase):
         self._check_tool_results = check_tool_results
         self._exit_behavior = exit_behavior
         self._violation_message = violation_message
+        self._reporter = reporter or default_reporter()
 
     # -- public helper -------------------------------------------------------
 
@@ -257,7 +266,14 @@ class BastionGuardrailMiddleware(_MiddlewareBase):
     def _evaluate(self, state: AgentState) -> dict[str, Any] | None:
         replacements: list[Any] = []
         for msg in self._messages_to_screen(state["messages"]):
-            result = self._guard.protect(_message_text(msg))
+            text = _message_text(msg)
+            result = self._guard.protect(text)
+            # Tool results are the indirect-injection surface (origin=tool_result).
+            is_tool = isinstance(msg, ToolMessage)
+            self._reporter.report(make_record(result, ReportContext(
+                vector="indirect" if is_tool else "direct",
+                origin="tool_result" if is_tool else "user_prompt",
+                source="langchain", content=text), self._guard))
             if not self._is_attack(result):
                 continue
             if self._exit_behavior == "error":

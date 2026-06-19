@@ -75,8 +75,9 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import Any
 
-from bastion_prompt_protection import Guard, GuardConfig, GuardResult, Preset
+from bastion_prompt_protection import Guard, GuardConfig, GuardResult, Preset, ReportContext
 from bastion_prompt_protection.exceptions import PromptInjectionError
+from bastion_prompt_protection.telemetry import Reporter, default_reporter, make_record
 
 try:
     from litellm.integrations.custom_guardrail import CustomGuardrail
@@ -139,6 +140,7 @@ class BastionGuardrailPlugin(CustomGuardrail):
         screen_tool_results: bool = True,
         screen_output: bool = False,
         violation_message: str = _DEFAULT_VIOLATION_MESSAGE,
+        reporter: Reporter | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -176,6 +178,7 @@ class BastionGuardrailPlugin(CustomGuardrail):
         self._screen_tool_results = screen_tool_results
         self._screen_output = screen_output
         self._violation_message = violation_message
+        self._reporter = reporter or default_reporter()
 
     # -- public helper -------------------------------------------------------
 
@@ -202,10 +205,11 @@ class BastionGuardrailPlugin(CustomGuardrail):
             return data
 
         messages: list[dict] = data.get("messages") or []
-        texts_to_screen = list(_screenable_texts(messages, self._screen_tool_results))
 
-        for text in texts_to_screen:
+        for text, origin, vector in _screenable_texts(messages, self._screen_tool_results):
             result = self._guard.protect(text)
+            self._reporter.report(make_record(result, ReportContext(
+                vector=vector, origin=origin, source="litellm", content=text), self._guard))
             if self._is_attack(result):
                 if self._block:
                     _raise_rejected(self._format(result), data)
@@ -243,6 +247,9 @@ class BastionGuardrailPlugin(CustomGuardrail):
                         content = choice.message.content
                         if content and isinstance(content, str):
                             result = self._guard.protect(content)
+                            self._reporter.report(make_record(result, ReportContext(
+                                direction="output", source="litellm", content=content),
+                                self._guard))
                             if self._is_attack(result):
                                 raise ValueError(self._format(result))
         except ImportError:  # pragma: no cover
@@ -293,14 +300,13 @@ def _message_text(message: dict) -> str:
 def _screenable_texts(
     messages: list[dict],
     screen_tool_results: bool,
-) -> Iterator[str]:
-    """Yield the texts that should be screened from the messages list.
+) -> Iterator[tuple[str, str, str]]:
+    """Yield ``(text, origin, vector)`` for each message to screen.
 
     Screens:
-    - The **last** ``user`` / ``human`` role message (direct injection from the
-      current turn).
-    - Optionally all ``tool`` / ``function`` role messages (indirect injection
-      via tool output), controlled by ``screen_tool_results``.
+    - The **last** ``user`` / ``human`` message → ``(user_prompt, direct)``.
+    - Optionally all ``tool`` / ``function`` messages → ``(tool_result, indirect)``
+      — the indirect-injection surface — controlled by ``screen_tool_results``.
 
     Messages before the last user turn were already screened in the previous
     round — re-screening the full history would be redundant.
@@ -316,7 +322,7 @@ def _screenable_texts(
             break
 
     if last_user_text is not None:
-        yield last_user_text
+        yield last_user_text, "user_prompt", "direct"
 
     # Tool/function results (indirect injection surface)
     if screen_tool_results:
@@ -325,7 +331,7 @@ def _screenable_texts(
             if role in ("tool", "function"):
                 text = _message_text(msg)
                 if text:
-                    yield text
+                    yield text, "tool_result", "indirect"
 
 
 def _raise_rejected(message: str, data: dict) -> None:

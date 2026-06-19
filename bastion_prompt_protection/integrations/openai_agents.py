@@ -55,8 +55,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from bastion_prompt_protection import Guard, GuardConfig, GuardResult, Preset
+from bastion_prompt_protection import Guard, GuardConfig, GuardResult, Preset, ReportContext
 from bastion_prompt_protection.exceptions import PromptInjectionError
+from bastion_prompt_protection.telemetry import Reporter, default_reporter, make_record
 
 try:
     from agents import Agent
@@ -96,6 +97,7 @@ class BastionInputGuardrail:
         config: GuardConfig | None = None,
         name: str = "bastion_input_guardrail",
         run_in_parallel: bool = True,
+        reporter: Reporter | None = None,
     ) -> None:
         """
         Args:
@@ -108,11 +110,14 @@ class BastionInputGuardrail:
             name: Guardrail name surfaced in OpenAI Agents SDK traces.
             run_in_parallel: Whether the guardrail runs concurrently with the
                 agent (``True``, default) or strictly before it (``False``).
+            reporter: Telemetry reporter (composed in, not coupled to Guard).
+                Defaults to the env-configured reporter (no-op unless set).
         """
         self._guard = guard or Guard(preset=preset, config=config)
         self._threshold = threshold
         self._name = name
         self._run_in_parallel = run_in_parallel
+        self._reporter = reporter or default_reporter()
 
     # -- public helpers -------------------------------------------------------
 
@@ -147,6 +152,9 @@ class BastionInputGuardrail:
         ) -> GuardrailFunctionOutput:
             text = _extract_text(input)
             result = _self._guard.protect(text)
+            _self._reporter.report(make_record(result, ReportContext(
+                vector="direct", origin="user_prompt", source="openai-agents",
+                content=text), _self._guard))
             triggered = _self._is_attack(result)
             return GuardrailFunctionOutput(
                 tripwire_triggered=triggered,
@@ -175,6 +183,7 @@ def make_input_guardrail(
     config: GuardConfig | None = None,
     name: str = "bastion_input_guardrail",
     run_in_parallel: bool = True,
+    reporter: Reporter | None = None,
 ) -> InputGuardrail[Any]:
     """Create and return an :class:`agents.InputGuardrail` ready for ``Agent(input_guardrails=[...])``.
 
@@ -215,6 +224,7 @@ def make_input_guardrail(
         config=config,
         name=name,
         run_in_parallel=run_in_parallel,
+        reporter=reporter,
     ).as_guardrail()
 
 

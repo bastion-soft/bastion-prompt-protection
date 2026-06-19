@@ -67,8 +67,9 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from bastion_prompt_protection import Guard, GuardConfig, GuardResult, Preset
+from bastion_prompt_protection import Guard, GuardConfig, GuardResult, Preset, ReportContext
 from bastion_prompt_protection.exceptions import PromptInjectionError
+from bastion_prompt_protection.telemetry import Reporter, default_reporter, make_record
 
 try:
     from llama_index.core.base.base_query_engine import BaseQueryEngine
@@ -136,6 +137,7 @@ class BastionNodePostprocessor(BaseNodePostprocessor):
     _threshold: float | None = PrivateAttr()
     _block: bool = PrivateAttr()
     _screen_query: bool = PrivateAttr()
+    _reporter: Reporter = PrivateAttr()
 
     def __init__(
         self,
@@ -146,6 +148,7 @@ class BastionNodePostprocessor(BaseNodePostprocessor):
         screen_query: bool = False,
         preset: str | Preset = Preset.TINY,
         config: GuardConfig | None = None,
+        reporter: Reporter | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -170,6 +173,9 @@ class BastionNodePostprocessor(BaseNodePostprocessor):
         self._threshold = threshold
         self._block = block
         self._screen_query = screen_query
+        # Reporting is composed in, not coupled to Guard. Defaults to the
+        # env-configured reporter (a no-op unless telemetry is configured).
+        self._reporter = reporter or default_reporter()
 
     # -- public helpers ------------------------------------------------------
 
@@ -191,14 +197,21 @@ class BastionNodePostprocessor(BaseNodePostprocessor):
         # Optional: screen the query string (opt-in, off by default).
         if self._screen_query and query_bundle is not None:
             result = self._guard.protect(query_bundle.query_str)
+            self._reporter.report(make_record(result, ReportContext(
+                vector="direct", origin="user_prompt", source="llamaindex",
+                content=query_bundle.query_str), self._guard))
             if _is_attack(result, self._threshold):
                 raise PromptInjectionError(result)
 
-        # Screen each retrieved node.
+        # Screen each retrieved node. This is the indirect-injection moat: the
+        # console can report attacks caught *inside retrieved documents*.
         clean: list[NodeWithScore] = []
         for node in nodes:
             text = node.node.get_content()
             result = self._guard.protect(text)
+            self._reporter.report(make_record(result, ReportContext(
+                vector="indirect", origin="rag_document", source="llamaindex",
+                content=text), self._guard))
             if _is_attack(result, self._threshold):
                 if self._block:
                     raise PromptInjectionError(result)
@@ -268,6 +281,7 @@ class BastionGuardQueryEngine(CustomQueryEngine):
     _screen_nodes: bool = PrivateAttr()
     _node_postprocessor: BastionNodePostprocessor | None = PrivateAttr()
     _postprocessor_attached: bool = PrivateAttr()
+    _reporter: Reporter = PrivateAttr()
 
     def __init__(
         self,
@@ -280,6 +294,7 @@ class BastionGuardQueryEngine(CustomQueryEngine):
         screen_nodes: bool = True,
         preset: str | Preset = Preset.TINY,
         config: GuardConfig | None = None,
+        reporter: Reporter | None = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -302,7 +317,9 @@ class BastionGuardQueryEngine(CustomQueryEngine):
         """
         super().__init__(inner_engine=inner_engine, **kwargs)
         shared_guard = guard or Guard(preset=preset, config=config)
+        shared_reporter = reporter or default_reporter()
         self._guard = shared_guard
+        self._reporter = shared_reporter
         self._threshold = threshold
         self._block = block
         self._screen_query = screen_query
@@ -313,6 +330,7 @@ class BastionGuardQueryEngine(CustomQueryEngine):
                 threshold=threshold,
                 block=block,
                 screen_query=False,  # query already screened above
+                reporter=shared_reporter,  # share one reporter pipeline
             )
             if screen_nodes
             else None
@@ -345,6 +363,9 @@ class BastionGuardQueryEngine(CustomQueryEngine):
         """Screen the query, then delegate to the inner engine."""
         if self._screen_query:
             result = self._guard.protect(query_str)
+            self._reporter.report(make_record(result, ReportContext(
+                vector="direct", origin="user_prompt", source="llamaindex",
+                content=query_str), self._guard))
             if _is_attack(result, self._threshold) and self._block:
                 raise PromptInjectionError(result)
 
@@ -367,6 +388,9 @@ class BastionGuardQueryEngine(CustomQueryEngine):
         """Screen the query asynchronously, then delegate to the inner engine."""
         if self._screen_query:
             result = self._guard.protect(query_str)
+            self._reporter.report(make_record(result, ReportContext(
+                vector="direct", origin="user_prompt", source="llamaindex",
+                content=query_str), self._guard))
             if _is_attack(result, self._threshold) and self._block:
                 raise PromptInjectionError(result)
 

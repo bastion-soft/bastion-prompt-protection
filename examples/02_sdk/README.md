@@ -43,7 +43,7 @@ Subsequent runs start in under 2 seconds — the model is cached under
 ## Expected output
 
 ```
-bastion-prompt-protection v1.3.0
+bastion-prompt-protection v1.3.5
 Loading Guard — model downloads on the first protect() call
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -55,7 +55,7 @@ Loading Guard — model downloads on the first protect() call
   stage_reached : binary
   latency_ms    : 5.2
 
-  guard.sdk_version   : 1.3.0
+  guard.sdk_version   : 1.3.5
   guard.model_version : c75249a  (model build identifier)
   ...
 ```

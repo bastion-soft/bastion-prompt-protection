@@ -8,7 +8,7 @@ Use this when:
 
 Run:
     pip install bastion-prompt-protection
-    python examples/02_local_cache.py
+    python examples/05_local_cache/main.py
 
 After the first run, you can disconnect from the network entirely; the
 model is fully cached at the path you specify.

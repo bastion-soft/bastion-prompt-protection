@@ -15,7 +15,7 @@ You need outbound HTTPS for the *initial* download. After that, no network acces
 ## Run
 
 ```bash
-python examples/02_local_cache/main.py
+python examples/05_local_cache/main.py
 ```
 
 The script does two things:
