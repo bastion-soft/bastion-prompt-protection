@@ -5,13 +5,13 @@
 | bastion-prompt-protection (70M) | 1.000 | 0.830 | 0.999 | 0.861 | 0.999 | 0.982 | **0.945** |
 | wolf-defender (0.3B) | 0.968 | 0.611 | 0.909 | 0.736 | 1.000 | 0.972 | **0.866** |
 | wolf-defender-small (0.1B) | 0.910 | 0.628 | 0.724 | 0.727 | 1.000 | 0.975 | **0.827** |
-| proventra mdeberta (280M) | 0.970 | 0.679 | 0.826 | 0.533 | 0.996 | 0.929 | **0.822** |
-| sentinel (qualifire, 395M) | 0.911 | 0.569 | 0.805 | 0.731 | 0.978 | 0.925 | **0.820** |
-| protectai v2 (184M) | 0.880 | 0.414 | 0.819 | 0.797 | 1.000 | 0.986 | **0.816** |
-| deepset injection (184M) | 0.881 | 0.594 | 0.732 | 0.595 | 1.000 | 0.917 | **0.786** |
-| fmops distilbert (67M) | 0.861 | 0.660 | 0.576 | 0.522 | 1.000 | 0.977 | **0.766** |
+| proventra mdeberta (280M) | 0.970 | 0.679 | 0.825 | 0.535 | 0.996 | 0.929 | **0.822** |
+| sentinel (qualifire, 395M) | 0.910 | 0.569 | 0.800 | 0.730 | 0.977 | 0.923 | **0.818** |
+| protectai v2 (184M) | 0.880 | 0.414 | 0.819 | 0.799 | 1.000 | 0.983 | **0.816** |
+| deepset injection (184M) | 0.881 | 0.594 | 0.732 | 0.595 | 1.000 | 0.917 | **0.787** |
+| fmops distilbert (67M) | 0.860 | 0.658 | 0.579 | 0.523 | 1.000 | 0.977 | **0.766** |
 | hlyn judge (70M) | 0.867 | 0.535 | 0.835 | 0.615 | 0.999 | 0.724 | **0.762** |
-| meta prompt-guard (86M) | 0.756 | 0.910 | 0.656 | 0.413 | 0.698 | 0.809 | **0.707** |
+| meta prompt-guard (86M) | 0.756 | 0.910 | 0.656 | 0.404 | 0.690 | 0.809 | **0.704** |
 
 ## Indirect / structured injection — F1 @ threshold=0.5
 
@@ -30,4 +30,4 @@
 
 Held-out indirect/structured sets, scored pure-model. Reported separately from the direct leaderboard — competitors target plain-prose injection, so this is a distinct capability axis, not folded into the main average.
 
-_Generated 2026-06-16 via `python -m scripts.eval_indirect`._
+_Generated 2026-06-23 via `python -m scripts.eval_indirect`._

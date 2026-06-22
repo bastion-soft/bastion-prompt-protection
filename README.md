@@ -30,12 +30,14 @@ Leading open prompt-injection detectors across four held-out benchmarks, all rep
 | Model | Params | Avg AUC | Avg F1 |
 |---|---:|---:|---:|
 | **bastion-prompt-protection** (free) | 70M | **0.991** | **0.943** |
-| sentinel | 395M | 0.959 | 0.858 |
+| sentinel | 395M | 0.955 | 0.858 |
 | wolf-defender | 0.3B | 0.954 | 0.893 |
-| protectai v2 | 184M | 0.850 | 0.599 |
+| protectai v2 | 184M | 0.820 | 0.599 |
 | deepset injection | 184M | 0.766 | 0.696 |
 
 The free 70M model tops every open competitor on average — including ones 4–6× its size. Per-benchmark numbers and latency in the full leaderboard.
+
+**What do these numbers mean — and where is Bastion weak?** See the honest verdict in [`eval/results/FINDINGS.md`](eval/results/FINDINGS.md): the threshold-agnostic comparison (Bastion flags 7.7% of real traffic to catch 95% of attacks vs 35%+ for the next-best), the false-positive graphs, the indirect weak spots, and what no classifier can catch.
 
 It also leads on **indirect / structured injection** — attacks hidden inside JSON tool results, documents, and agent interactions (Z-Edgar, BIPIA, InjecAgent, AgentDojo, HackAPrompt, TensorTrust): **0.945 avg AUC**, ahead of every open detector. Full table in [`eval/results/indirect.md`](eval/results/indirect.md). Beyond AUC, the harness also measures this threshold-agnostically — how much *benign* structured data each detector flags when tuned to a fixed catch rate — see the [eval methodology](eval/README.md).
 

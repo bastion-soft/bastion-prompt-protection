@@ -65,6 +65,7 @@ def main() -> int:
     fig.tight_layout()
     p1 = out_dir / "operating_curve.svg"
     fig.savefig(p1)
+    fig.savefig(p1.with_suffix(".png"), dpi=130)  # PNG renders inline on GitHub
     plt.close(fig)
 
     # 2. FPR vs threshold.
@@ -82,9 +83,10 @@ def main() -> int:
     fig.tight_layout()
     p2 = out_dir / "fpr_vs_threshold.svg"
     fig.savefig(p2)
+    fig.savefig(p2.with_suffix(".png"), dpi=130)  # PNG renders inline on GitHub
     plt.close(fig)
 
-    print(f"✓ wrote {p1}\n✓ wrote {p2}")
+    print(f"✓ wrote {p1} (+ .png)\n✓ wrote {p2} (+ .png)")
     return 0
 
 

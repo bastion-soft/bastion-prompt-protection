@@ -15,4 +15,4 @@
 
 Benign real-user openers (WildChat / LMSYS first-user turns); the share each model wrongly flags as an attack. Lower is better.
 
-_Generated 2026-06-16 via `python -m scripts.measure_false_positives`._
+_Generated 2026-06-22 via `python -m scripts.measure_false_positives`._
