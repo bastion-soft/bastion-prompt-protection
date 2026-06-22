@@ -37,7 +37,7 @@ Leading open prompt-injection detectors across four held-out benchmarks, all rep
 
 The free 70M model tops every open competitor on average — including ones 4–6× its size. Per-benchmark numbers and latency in the full leaderboard.
 
-It also leads on **indirect / structured injection** — attacks hidden inside JSON tool results, documents, and agent interactions (Z-Edgar, BIPIA, InjecAgent, AgentDojo, HackAPrompt, TensorTrust): **0.945 avg AUC**, ahead of every open detector. Full table in [`eval/results/indirect.md`](eval/results/indirect.md).
+It also leads on **indirect / structured injection** — attacks hidden inside JSON tool results, documents, and agent interactions (Z-Edgar, BIPIA, InjecAgent, AgentDojo, HackAPrompt, TensorTrust): **0.945 avg AUC**, ahead of every open detector. Full table in [`eval/results/indirect.md`](eval/results/indirect.md). Beyond AUC, the harness also measures this threshold-agnostically — how much *benign* structured data each detector flags when tuned to a fixed catch rate — see the [eval methodology](eval/README.md).
 
 ## How it scores on real traffic
 

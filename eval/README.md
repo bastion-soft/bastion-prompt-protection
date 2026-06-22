@@ -114,26 +114,35 @@ python -m scripts.eval_indirect --limit 200                            # smoke r
 
 The output reports AUC + F1 per set and an **Avg** across them, scored pure-model for every model. `hackaprompt` is gated (needs the HF token); `agentdojo` needs its pip package — both **skip cleanly** if unavailable, like the other gated entries.
 
+AUC here is threshold-free. For the threshold-agnostic *false-positive* view on structured data — how much benign structured data each detector flags when tuned to a fixed catch rate — dump scores with `--dump-scores eval/results/scores_indirect` and run the within-set analysis (see *Operating points* below).
+
 ## Operating points — threshold-agnostic comparison — `scripts/analyze_operating_points.py`
 
 A fixed 0.5 threshold is just one operating point, and it isn't equally fair to every detector — a model whose scores cluster near 0.5 (instead of at the extremes) sees its FPR swing wildly with the threshold. To compare detectors **without** depending on where each one's 0.5 happens to fall, dump the per-prompt scores once and analyse them in post:
 
 ```bash
 # Dump scores during the scoring runs (no extra runtime — the scores are already computed):
-python -m scripts.run_leaderboard         --dump-scores eval/results/scores   # attack sets (+ labels)
-python -m scripts.measure_false_positives --dump-scores eval/results/scores   # real benign traffic
+python -m scripts.run_leaderboard         --dump-scores eval/results/scores            # attack sets (+ labels)
+python -m scripts.measure_false_positives --dump-scores eval/results/scores            # real benign traffic
+python -m scripts.eval_indirect           --dump-scores eval/results/scores_indirect   # indirect/structured sets
 
 # Then, with no GPU and no model inference:
-python -m scripts.analyze_operating_points                 # → results/operating_points.{json,md}, det_points.json
-python -m scripts.plot_operating_points                    # optional curves (needs matplotlib)
+python -m scripts.analyze_operating_points                                             # direct → operating_points.{json,md}, det_points.json
+python -m scripts.analyze_operating_points --scores-dir eval/results/scores_indirect \
+    --within-set --label indirect                                                      # indirect → operating_points_indirect.*
+python -m scripts.plot_operating_points                                                # optional curves (needs matplotlib)
 ```
 
-`analyze_operating_points` pools each detector's attack scores and real-benign scores and reports:
+It runs in **two modes**:
+
+**Direct (default, cross-benign)** — pools each detector's attack scores to pick the threshold, measures FPR on the **separate real-benign traffic**, and reports:
 
 - **FPR at a fixed detection rate** — set the per-detector threshold to catch e.g. 95% / 99% of attacks, then measure the share of *real benign traffic* flagged at that catch rate. Holds detection constant and compares the false-alarm cost, so the ranking no longer depends on the 0.5 line. The apples-to-apples comparison.
 - **Equal-error rate (EER)** and **AUC** (the AUC cross-checks the leaderboard).
-- A **threshold sweep** — FPR (real benign) and recall (attacks) at 0.2 / 0.45 / 0.5 / 0.55 / 0.8 (a span plus near-0.5 detail; `--thresholds` to change). The deployment curve below always covers the full 0→1 range regardless.
+- A **threshold sweep** — FPR (real benign) and recall (attacks) at 0.2 / 0.45 / 0.5 / 0.55 / 0.8 (a span plus near-0.5 detail; `--thresholds` to change). The deployment curve always covers the full 0→1 range regardless.
 - A **deployment curve** (`det_points.json`) — TPR-on-attacks vs FPR-on-real-benign across thresholds; the false-positive-axis companion to the detection ROC.
+
+**Indirect / structured (`--within-set`)** — the indirect sets are *matched* injected-vs-benign structured data, so each set carries its own benign half. Here FPR is measured **within each set**: tune the threshold to catch e.g. 95% of that set's injections, then report the share of **benign structured records** wrongly flagged at that catch rate. This answers the structured-data version of the over-defense question — *does the detector catch injection hidden in JSON / invoices / tool output without tripping on legitimate structured data?* — without depending on the 0.5 line. Writes `operating_points_indirect.{json,md}` + `det_points_indirect.json`.
 
 Everything is derived from the dumped scores, so anyone can reproduce or re-cut it offline. AUC and the committed 0.5 metrics are unchanged — this is purely additive.
 
@@ -159,7 +168,7 @@ All three artifacts share a top-level shape:
 
 `leaderboard.json` and `indirect.json` rows include `benchmark_key`, `auc`, `f1`, `precision`, `recall`, `fpr_at_tpr_99`, `fpr_at_tpr_95`, `p50_latency_ms`, `p95_latency_ms`. `false_positives.json` rows include `fpr`, `mean_risk`, `median_risk`, `p95_risk`, and three risk-band counts (`safe < 0.20`, `uncertain ∈ [0.20, 0.85)`, `attack ≥ 0.85`) — the bands help when comparing models whose calibration differs.
 
-`operating_points.json` rows include `auc`, `eer`, `eer_threshold`, `fpr_at_tpr` (per target detection rate: chosen threshold + FPR on real benign), and `threshold_sweep` (per threshold: FPR on real benign + recall on attacks). `det_points.json` holds, per detector, the `deployment_curve` (`threshold`, `tpr_attacks`, `fpr_real_benign` arrays). Both are derived offline from `results/scores/<model>__<dataset>.json` — the dumped per-prompt scores (`scores`, `labels` for attack sets, `null` for benign).
+`operating_points.json` (and `operating_points_indirect.json`) carry a `mode` (`cross-benign` or `within-set`) and rows with `auc`, `eer`, `eer_threshold`, `fpr_at_tpr` (per target detection rate: chosen `threshold` + `fpr_benign`), `threshold_sweep` (per threshold: `fpr_benign` + `recall_attacks`), and — in within-set mode — a `dataset` field. `det_points{,_indirect}.json` hold the per-detector `deployment_curve` (`threshold`, `tpr_attacks`, `fpr_benign` arrays). All are derived offline from the dumped per-prompt scores in `results/scores/` and `results/scores_indirect/` (`<model>__<dataset>.json`, with `scores`, `labels` for attack/labelled sets and `null` for benign-only sets). `fpr_benign` means *real* benign traffic in cross-benign mode and *benign structured records* in within-set mode.
 
 ## Adding a new baseline
 
@@ -187,8 +196,9 @@ Re-run the relevant script — both scripts cache nothing model-side, so old run
 | `results/leaderboard.json` | Latest published direct AUC/F1 numbers (committed snapshot) |
 | `results/false_positives.json` | Latest published FPR numbers (committed snapshot) |
 | `results/indirect.json` | Latest published indirect/structured numbers (committed snapshot) |
-| `results/operating_points.{json,md}` | Threshold-agnostic view: FPR at fixed detection rate, EER, threshold sweep |
-| `results/det_points.json` | Per-detector deployment/ROC curve points (for plotting) |
-| `results/scores/` | Raw per-prompt scores per (model, dataset) — the source for offline analysis |
+| `results/operating_points.{json,md}` | Direct threshold-agnostic view: FPR at fixed detection rate, EER, threshold sweep |
+| `results/operating_points_indirect.{json,md}` | Indirect within-set view: FPR on benign structured records at a fixed catch rate |
+| `results/det_points{,_indirect}.json` | Per-detector deployment/ROC curve points (for plotting) |
+| `results/scores/` + `results/scores_indirect/` | Raw per-prompt scores per (model, dataset) — the source for offline analysis |
 
 (The scoring scripts live in `scripts/`: `run_leaderboard.py`, `eval_indirect.py`, `measure_false_positives.py`; the post-processing scripts are `analyze_operating_points.py` and `plot_operating_points.py`.)

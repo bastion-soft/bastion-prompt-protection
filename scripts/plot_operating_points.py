@@ -54,7 +54,7 @@ def main() -> int:
     fig, ax = plt.subplots(figsize=(7, 5))
     for name in names:
         c = curves[name]
-        ax.plot(c["fpr_real_benign"], c["tpr_attacks"], label=name, **_style(name))
+        ax.plot(c["fpr_benign"], c["tpr_attacks"], label=name, **_style(name))
     ax.set_xlabel("False-positive rate on real benign traffic")
     ax.set_ylabel("Detection rate on attacks (TPR)")
     ax.set_title("Operating curve — catch rate vs false alarms on real traffic")
@@ -71,7 +71,7 @@ def main() -> int:
     fig, ax = plt.subplots(figsize=(7, 5))
     for name in names:
         c = curves[name]
-        ax.plot(c["threshold"], c["fpr_real_benign"], label=name, **_style(name))
+        ax.plot(c["threshold"], c["fpr_benign"], label=name, **_style(name))
     ax.set_xlabel("Decision threshold")
     ax.set_ylabel("False-positive rate on real benign traffic")
     ax.set_title("Threshold sensitivity — flat = robust, steep = brittle")

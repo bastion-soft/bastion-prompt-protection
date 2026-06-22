@@ -53,7 +53,7 @@ Leading open prompt-injection detectors across four held-out benchmarks, all rep
 | protectai v2 | 184M | 0.850 | 0.599 |
 | deepset injection | 184M | 0.766 | 0.696 |
 
-It also leads on **indirect / structured injection** (attacks hidden in JSON tool results, documents, agent interactions): **0.945 avg AUC**, ahead of every open detector — `python -m scripts.eval_indirect`.
+It also leads on **indirect / structured injection** (attacks hidden in JSON tool results, documents, agent interactions): **0.945 avg AUC**, ahead of every open detector — `python -m scripts.eval_indirect`. The harness also measures this threshold-agnostically (how much *benign* structured data each detector flags at a fixed catch rate) — see the eval methodology in the [GitHub repo](https://github.com/bastion-soft/bastion-prompt-protection/blob/main/eval/README.md).
 
 ## How it scores on real traffic
 
