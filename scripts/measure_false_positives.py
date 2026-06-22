@@ -206,12 +206,22 @@ DATASET_LOADERS = {
 # ────────────────────────────────────────────────────────────────────────
 
 
-def score(runner: TransformersRunner, prompts: list[str], dataset_name: str) -> FPRRow:
+def score(
+    runner: TransformersRunner,
+    prompts: list[str],
+    dataset_name: str,
+    dump_dir: str | None = None,
+) -> FPRRow:
     """Score one (runner, dataset) pair, return the FPR row."""
     t0 = time.perf_counter()
     output = runner.score_batch(prompts)
     elapsed = time.perf_counter() - t0
     risks = output.scores
+
+    if dump_dir is not None:
+        from eval.scores_io import dump_scores
+
+        dump_scores(dump_dir, runner.name, dataset_name, "benign", risks, labels=None)
 
     n = len(risks)
     n_attack = sum(1 for r in risks if r >= 0.5)
@@ -356,7 +366,7 @@ def main() -> int:
 
         for dataset_name, prompts in datasets.items():
             try:
-                rows.append(score(runner, prompts, dataset_name))
+                rows.append(score(runner, prompts, dataset_name, dump_dir=args.dump_scores))
             except Exception as exc:
                 logger.warning("   ✗ %s on %s failed: %s", display, dataset_name, str(exc)[:200])
 
@@ -453,6 +463,13 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--output", default="eval/results/false_positives.json")
+    p.add_argument(
+        "--dump-scores",
+        default=None,
+        metavar="DIR",
+        help="also write raw per-prompt scores per (model, dataset) to DIR "
+        "(e.g. eval/results/scores) for offline operating-point analysis.",
+    )
     return p.parse_args()
 
 

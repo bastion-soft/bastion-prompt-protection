@@ -142,7 +142,9 @@ def main() -> int:
             continue
         for key, bench in bench_pairs:
             try:
-                rows.append((key, _run(runner, bench, threshold=args.threshold)))
+                rows.append(
+                    (key, _run(runner, bench, threshold=args.threshold, dump_dir=args.dump_scores))
+                )
             except Exception as exc:
                 logger.warning("%s on %s failed: %s", display, bench.name, exc)
 
@@ -262,6 +264,13 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--threshold", type=float, default=0.5)
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--output-dir", default="eval/results")
+    p.add_argument(
+        "--dump-scores",
+        default=None,
+        metavar="DIR",
+        help="also write raw per-prompt scores+labels per (model, benchmark) to DIR "
+        "(e.g. eval/results/scores) for offline operating-point analysis.",
+    )
     return p.parse_args()
 
 

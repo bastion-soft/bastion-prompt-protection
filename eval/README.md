@@ -114,6 +114,29 @@ python -m scripts.eval_indirect --limit 200                            # smoke r
 
 The output reports AUC + F1 per set and an **Avg** across them, scored pure-model for every model. `hackaprompt` is gated (needs the HF token); `agentdojo` needs its pip package — both **skip cleanly** if unavailable, like the other gated entries.
 
+## Operating points — threshold-agnostic comparison — `scripts/analyze_operating_points.py`
+
+A fixed 0.5 threshold is just one operating point, and it isn't equally fair to every detector — a model whose scores cluster near 0.5 (instead of at the extremes) sees its FPR swing wildly with the threshold. To compare detectors **without** depending on where each one's 0.5 happens to fall, dump the per-prompt scores once and analyse them in post:
+
+```bash
+# Dump scores during the scoring runs (no extra runtime — the scores are already computed):
+python -m scripts.run_leaderboard         --dump-scores eval/results/scores   # attack sets (+ labels)
+python -m scripts.measure_false_positives --dump-scores eval/results/scores   # real benign traffic
+
+# Then, with no GPU and no model inference:
+python -m scripts.analyze_operating_points                 # → results/operating_points.{json,md}, det_points.json
+python -m scripts.plot_operating_points                    # optional curves (needs matplotlib)
+```
+
+`analyze_operating_points` pools each detector's attack scores and real-benign scores and reports:
+
+- **FPR at a fixed detection rate** — set the per-detector threshold to catch e.g. 95% / 99% of attacks, then measure the share of *real benign traffic* flagged at that catch rate. Holds detection constant and compares the false-alarm cost, so the ranking no longer depends on the 0.5 line. The apples-to-apples comparison.
+- **Equal-error rate (EER)** and **AUC** (the AUC cross-checks the leaderboard).
+- A **threshold sweep** — FPR (real benign) and recall (attacks) at 0.2 / 0.45 / 0.5 / 0.55 / 0.8 (a span plus near-0.5 detail; `--thresholds` to change). The deployment curve below always covers the full 0→1 range regardless.
+- A **deployment curve** (`det_points.json`) — TPR-on-attacks vs FPR-on-real-benign across thresholds; the false-positive-axis companion to the detection ROC.
+
+Everything is derived from the dumped scores, so anyone can reproduce or re-cut it offline. AUC and the committed 0.5 metrics are unchanged — this is purely additive.
+
 ## Held out from training
 
 Every set scored here is held out from the model's training data — that's the contract behind the numbers, and it's why they reproduce from public weights with the scripts above. Re-run any script to verify a published claim yourself.
@@ -136,6 +159,8 @@ All three artifacts share a top-level shape:
 
 `leaderboard.json` and `indirect.json` rows include `benchmark_key`, `auc`, `f1`, `precision`, `recall`, `fpr_at_tpr_99`, `fpr_at_tpr_95`, `p50_latency_ms`, `p95_latency_ms`. `false_positives.json` rows include `fpr`, `mean_risk`, `median_risk`, `p95_risk`, and three risk-band counts (`safe < 0.20`, `uncertain ∈ [0.20, 0.85)`, `attack ≥ 0.85`) — the bands help when comparing models whose calibration differs.
 
+`operating_points.json` rows include `auc`, `eer`, `eer_threshold`, `fpr_at_tpr` (per target detection rate: chosen threshold + FPR on real benign), and `threshold_sweep` (per threshold: FPR on real benign + recall on attacks). `det_points.json` holds, per detector, the `deployment_curve` (`threshold`, `tpr_attacks`, `fpr_real_benign` arrays). Both are derived offline from `results/scores/<model>__<dataset>.json` — the dumped per-prompt scores (`scores`, `labels` for attack sets, `null` for benign).
+
 ## Adding a new baseline
 
 Append to the `BASELINES` list at the top of either script:
@@ -154,12 +179,16 @@ Re-run the relevant script — both scripts cache nothing model-side, so old run
 |---|---|
 | `data.py` | Loaders for each held-out **direct** adversarial benchmark |
 | `indirect_data.py` | Loaders for the **indirect/structured** sets (Z-Edgar/BIPIA/InjecAgent/AgentDojo/HackAPrompt/TensorTrust) |
-| `metrics.py` | AUC, F1, precision, recall, FPR at chosen TPR |
+| `metrics.py` | AUC, F1, precision, recall, FPR at chosen TPR; plus `threshold_at_tpr`, `fpr_at_threshold`, `eer`, `roc_points` for operating-point analysis |
 | `runners.py` | `BastionRunner` (local SDK) and `TransformersRunner` (any HF model id, temperature-aware) |
+| `scores_io.py` | Dump/load per-prompt scores (`--dump-scores`) for offline operating-point analysis |
 | `benchmark_suite.py` | Multi-runner × multi-benchmark grid |
 | `benchmark.py` | Single-runner, single-benchmark CLI |
 | `results/leaderboard.json` | Latest published direct AUC/F1 numbers (committed snapshot) |
 | `results/false_positives.json` | Latest published FPR numbers (committed snapshot) |
 | `results/indirect.json` | Latest published indirect/structured numbers (committed snapshot) |
+| `results/operating_points.{json,md}` | Threshold-agnostic view: FPR at fixed detection rate, EER, threshold sweep |
+| `results/det_points.json` | Per-detector deployment/ROC curve points (for plotting) |
+| `results/scores/` | Raw per-prompt scores per (model, dataset) — the source for offline analysis |
 
-(The two leaderboard scripts live in `scripts/`: `run_leaderboard.py`, `eval_indirect.py`, `measure_false_positives.py`.)
+(The scoring scripts live in `scripts/`: `run_leaderboard.py`, `eval_indirect.py`, `measure_false_positives.py`; the post-processing scripts are `analyze_operating_points.py` and `plot_operating_points.py`.)

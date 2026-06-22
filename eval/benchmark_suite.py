@@ -113,7 +113,12 @@ def _build_runner(spec: str) -> Runner:
     return TransformersRunner(model_id=spec)
 
 
-def _run(runner: Runner, bench: EvalSet, threshold: float) -> SuiteRow:
+def _run(
+    runner: Runner,
+    bench: EvalSet,
+    threshold: float,
+    dump_dir: str | Path | None = None,
+) -> SuiteRow:
     logger.info(
         "running %s on %s (n=%d, attack=%d, benign=%d)",
         runner.name,
@@ -128,6 +133,12 @@ def _run(runner: Runner, bench: EvalSet, threshold: float) -> SuiteRow:
 
     scores = np.asarray(output.scores, dtype=float)
     labels = np.asarray(bench.labels, dtype=int)
+
+    if dump_dir is not None:
+        from eval.scores_io import dump_scores
+
+        dump_scores(dump_dir, runner.name, bench.name, "attack", output.scores, bench.labels)
+
     metrics = binary_metrics(scores, labels, threshold=threshold)
 
     p50 = statistics.median(output.latencies_ms) if output.latencies_ms else 0.0
