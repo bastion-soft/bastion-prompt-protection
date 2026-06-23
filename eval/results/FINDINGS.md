@@ -6,8 +6,7 @@ this is the argument. Every number here is reproducible from the committed
 per-prompt scores (`scores/`, `scores_indirect/`) with no GPU — see the
 [eval harness docs](../README.md).
 
-> **Disclosure.** Bastion is the prompt-injection detector the author invested
-> in. The harness is public precisely so the leaderboard doesn't rest on anyone's
+> **Disclosure.** The harness is public precisely so the leaderboard doesn't rest on anyone's
 > word. Be skeptical, and rerun it. Where Bastion is weak, this document says so.
 
 ---
