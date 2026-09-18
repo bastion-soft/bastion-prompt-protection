@@ -68,6 +68,11 @@ query_engine = index.as_query_engine(
 - **`screen_query=False`** (default): query screening is an explicit opt-in
   here because retrieval has already happened by the time this postprocessor
   runs. Use `BastionGuardQueryEngine` for pre-retrieval query protection.
+- **`screen_query=True` + `block=True`**: also raise if the *query itself* is
+  flagged (before any nodes are inspected).
+- **`screen_query=True` + `block=False`**: a flagged query does **not** raise —
+  falls through to node processing, enabling passive monitoring at both the
+  query and node level.
 
 ---
 

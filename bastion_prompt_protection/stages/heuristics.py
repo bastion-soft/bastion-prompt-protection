@@ -71,7 +71,7 @@ def _structural_score(text: str) -> float:
 class HeuristicsStage:
     rules: tuple[HeuristicRule, ...] = field(default_factory=lambda: RULES)
 
-    def run(self, text: str) -> float:
+    def score(self, text: str) -> float:
         """Return the highest-confidence match score (0.0 if no match)."""
         if not text:
             return 0.0

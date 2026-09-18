@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Literal
+
+from bastion_prompt_protection.constants import DEFAULT_MAX_INPUT_CHARS, DEFAULT_TOKEN_OVERLAP
 
 
 class Preset(str, Enum):
@@ -15,35 +18,38 @@ class Preset(str, Enum):
 
 # Model registry. Keys map to HuggingFace repos; the SDK downloads weights on
 # first use and caches them. Presets are just named shortcuts — you don't have
-# to use one: pass any repo id via GuardConfig(model=...) to point the
+# to use one: pass any repo id via GuardOptions(model=...) to point the
 # detector at your own (or a self-hosted) model.
-MODEL_REGISTRY: dict[str, dict[str, str]] = {
-    Preset.TINY.value: {
-        "binary": "bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1",
-    },
-    Preset.MULTILINGUAL.value: {
-        "binary": "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
-    },
+PRESET_HF_REPOS: dict[str, str] = {
+    Preset.TINY.value: "bastionsoft/binary-bastion-prompt-protection-deberta-v3-xsmall-v1",
+    Preset.MULTILINGUAL.value: "bastionsoft/binary-bastion-prompt-protection-mdeberta-v3-base-v1",
 }
+
+ModelUnavailableMode = Literal["throw", "try-download-then-throw"]
 
 
 @dataclass(frozen=True)
 class Thresholds:
-    safe_below: float = 0.20
     attack_above: float = 0.50
     heuristic_short_circuit: float = 0.95
 
 
-@dataclass
-class GuardConfig:
+DEFAULT_THRESHOLDS: Thresholds = Thresholds()
+
+
+@dataclass(frozen=True)
+class GuardOptions:
     preset: Preset = Preset.TINY
     thresholds: Thresholds = field(default_factory=Thresholds)
 
     enable_heuristics: bool = True
-    enable_binary: bool = True
-    enable_llm_judge: bool = False
+    enable_classifier: bool = True
 
-    max_input_chars: int = 8000
+    max_input_chars: int = DEFAULT_MAX_INPUT_CHARS
+    overlap_tokens: int = DEFAULT_TOKEN_OVERLAP
+    normalize_whitespace: bool = True
+
+    on_model_unavailable: ModelUnavailableMode = "try-download-then-throw"
 
     cache_dir: str | None = None
 
@@ -60,13 +66,24 @@ class GuardConfig:
     license_path: str | None = None
     require_license: bool = False
 
-    @classmethod
-    def from_preset(cls, preset: str | Preset) -> GuardConfig:
-        if isinstance(preset, str):
-            preset = Preset(preset)
-        return cls(preset=preset)
-
-    def model_id(self, stage: str) -> str:
-        if stage == "binary" and self.model:
+    def classifier_repo(self) -> str:
+        """Resolve the HuggingFace repo id for the classifier stage."""
+        if self.model:
             return self.model
-        return MODEL_REGISTRY[self.preset.value][stage]
+        repo = PRESET_HF_REPOS.get(self.preset.value)
+        if repo is None:
+            raise ValueError(f"Unknown preset: {self.preset!r}")
+        return repo
+
+
+def resolve_config(config: GuardOptions | Preset | str | None) -> GuardOptions:
+    """Normalise any of the accepted constructor forms into a ``GuardOptions``."""
+    if config is None:
+        return GuardOptions()
+    if isinstance(config, GuardOptions):
+        return config
+    if isinstance(config, Preset):
+        return GuardOptions(preset=config)
+    if isinstance(config, str):
+        return GuardOptions(preset=Preset(config))
+    raise TypeError(f"Expected GuardOptions | Preset | str | None, got {type(config)!r}")

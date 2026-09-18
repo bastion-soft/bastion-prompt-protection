@@ -49,5 +49,8 @@ memory/
 .claude/
 CLAUDE.md
 
+# Cursor session files
+:memory:.ses
+
 # Internal / confidential strategy docs — never publish
 internal/

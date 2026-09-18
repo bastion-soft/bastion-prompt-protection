@@ -2,6 +2,12 @@
 
 All notable changes to Bastion Prompt Protection are documented here. The format is loosely based on [Keep a Changelog](https://keepachangelog.com); this project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- **Model loader is cache-first.** When a complete HuggingFace snapshot already exists locally, `OnnxModelLoader` loads it without contacting the Hub (matching the TypeScript SDK). Hub access happens only when the model is missing or the cached snapshot is incomplete; incomplete snapshots are repaired at the pinned SHA, not `main`.
+
 ## [1.3.5] — 2026-06-19
 
 **Adds an opt-in telemetry / reporting subsystem and provenance-aware reporting in every integration. Detection is unchanged; all reporting is off by default (zero egress).**

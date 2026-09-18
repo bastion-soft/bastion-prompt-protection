@@ -62,15 +62,6 @@ openai-agents = [
 litellm = [
     "litellm>=1.40",
 ]
-# Telemetry reporter channels (bastion_prompt_protection.telemetry) — all opt-in.
-# The native HTTP channel needs nothing extra (stdlib urllib).
-otel = [
-    "opentelemetry-sdk>=1.27",
-    "opentelemetry-exporter-otlp-proto-http>=1.27",
-]
-langsmith = [
-    "langsmith>=0.1",
-]
 training = [
     "torch>=2.1",
     "transformers>=4.40",
@@ -101,8 +92,6 @@ dev = [
     "openai-agents>=0.2",  # so the OpenAI Agents integration tests run in dev/CI
     "litellm>=1.40",  # so the LiteLLM integration tests run in dev/CI
     "fastapi>=0.110",  # the LiteLLM guardrail blocks via fastapi.HTTPException (a proxy-runtime dep); needed to test the block path
-    "opentelemetry-sdk>=1.27",  # so the OTel reporter/pipeline-composition tests run in dev/CI
-    "opentelemetry-exporter-otlp-proto-http>=1.27",
 ]
 
 [project.urls]
@@ -135,3 +124,6 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+markers = [
+    "model: tests that require a downloaded HF model (deselect with -m 'not model')",
+]

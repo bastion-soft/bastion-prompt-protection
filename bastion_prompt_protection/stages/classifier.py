@@ -2,65 +2,82 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
+from typing import TYPE_CHECKING, Generator
 
 import numpy as np
 
 from bastion_prompt_protection.calibration import TemperatureScaler
 from bastion_prompt_protection.models.loader import OnnxModelLoader
+from bastion_prompt_protection.models.tokenizer import Encoding, TokenWindow
+
+if TYPE_CHECKING:
+    from bastion_prompt_protection.config import ModelUnavailableMode
 
 logger = logging.getLogger(__name__)
 
 
-# Returned when model weights are not yet available. Sits exactly between
-# safe_below and attack_above so it routes to whichever next stage is enabled
-# without falsely classifying anything.
-NEUTRAL_RISK = 0.5
-
-
-@dataclass
-class BinaryPrediction:
-    risk: float
-    available: bool
-
-
-class BinaryStage:
-    def __init__(self, model_id: str, cache_dir: str | None = None) -> None:
-        self.model_id = model_id
-        self._loader = OnnxModelLoader(model_id, cache_dir=cache_dir)
-        # Default to identity scaling (T=1.0); replaced with the fitted
-        # value the first time the model loads successfully.
+class ClassifierStage:
+    def __init__(
+        self,
+        model_id: str,
+        on_model_unavailable: ModelUnavailableMode = "try-download-then-throw",
+        cache_dir: str | None = None,
+    ) -> None:
+        self._loader = OnnxModelLoader(
+            model_id,
+            on_model_unavailable=on_model_unavailable,
+            cache_dir=cache_dir,
+        )
         self._scaler: TemperatureScaler = TemperatureScaler(temperature=1.0)
         self._calibration_loaded: bool = False
 
-    def is_available(self) -> bool:
-        return self._loader.is_available()
-
     @property
     def model_version(self) -> str | None:
-        """Identifier for the currently loaded model build (7-char prefix
-        of the HuggingFace snapshot commit SHA). Returns `None` if the
-        model hasn't been loaded yet; does not trigger loading."""
+        """7-char prefix of the HuggingFace snapshot commit SHA, or None if not loaded."""
         sha = self._loader.revision
         if sha is None:
             return None
         return sha[:7]
 
-    def predict(self, text: str) -> BinaryPrediction:
-        if not self.is_available():
-            return BinaryPrediction(risk=NEUTRAL_RISK, available=False)
+    def score(self, text: str) -> float:
+        """Single-window path: encode *text* with tokenizer truncation and run ONNX."""
+        artifact = self._loader.load()
+        self._maybe_load_calibration(artifact)
+        encoding = artifact.tokenizer.encode(text)
+        return self._run_onnx(artifact, encoding)
 
-        artifact = self._loader.artifact
+    def score_encoded(self, encoding: Encoding) -> float:
+        """Window path: run ONNX on a pre-built encoding (already wrapped with CLS/SEP)."""
+        artifact = self._loader.load()
+        self._maybe_load_calibration(artifact)
+        return self._run_onnx(artifact, encoding)
 
-        # Lazy-load the temperature.json on the first available() ping.
-        # Done here (not in __init__) because the snapshot directory only
-        # exists after the loader has fetched the model.
+    def windows(
+        self,
+        text: str,
+        *,
+        window_tokens: int | None = None,
+        overlap_tokens: int | None = None,
+        slab_chars: int | None = None,
+    ) -> Generator[TokenWindow, None, None]:
+        """Delegate window generation to the tokenizer (requires model to be loaded)."""
+        artifact = self._loader.load()
+        self._maybe_load_calibration(artifact)
+        kwargs: dict = {}
+        if window_tokens is not None:
+            kwargs["window_tokens"] = window_tokens
+        if overlap_tokens is not None:
+            kwargs["overlap_tokens"] = overlap_tokens
+        if slab_chars is not None:
+            kwargs["slab_chars"] = slab_chars
+        return artifact.tokenizer.windows(text, **kwargs)
+
+    def _maybe_load_calibration(self, artifact) -> None:
         if not self._calibration_loaded:
             self._scaler = _load_temperature(artifact.model_dir)
             self._calibration_loaded = True
 
-        encoding = artifact.tokenizer.encode(text)
-
+    def _run_onnx(self, artifact, encoding: Encoding) -> float:
         input_ids = np.array([encoding.ids], dtype=np.int64)
         attention_mask = np.array([encoding.attention_mask], dtype=np.int64)
 
@@ -72,22 +89,12 @@ class BinaryStage:
             feed["token_type_ids"] = np.zeros_like(input_ids)
 
         outputs = artifact.session.run(None, feed)
-        # Apply temperature calibration to the raw logits before softmax.
-        # If temperature.json was missing, _scaler is identity (T=1.0).
         logits = self._scaler.transform(outputs[0][0])
         probs = _softmax(logits)
-        # Convention: index 1 is the attack class.
-        attack_prob = float(probs[1]) if probs.shape[0] > 1 else float(probs[0])
-
-        return BinaryPrediction(risk=attack_prob, available=True)
+        return float(probs[1]) if probs.shape[0] > 1 else float(probs[0])
 
 
 def _load_temperature(model_dir) -> TemperatureScaler:
-    """Read temperature.json from the model snapshot, or fall back to T=1.0.
-
-    Older model snapshots without a calibration file load with identity
-    scaling so the SDK remains backward-compatible.
-    """
     temp_file = model_dir / "temperature.json"
     if not temp_file.exists():
         logger.info(

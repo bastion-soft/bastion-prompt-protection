@@ -59,7 +59,7 @@ curl -X POST localhost:8080/protect \
 {
   "risk": 0.99,
   "label": "attack",
-  "stage_reached": "binary",
+  "stage_reached": "classifier",
   "latency_ms": 5.2
 }
 ```

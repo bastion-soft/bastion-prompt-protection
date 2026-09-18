@@ -23,7 +23,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from bastion_prompt_protection import Guard, __version__
+from bastion_prompt_protection import (
+    DEFAULT_MAX_INPUT_CHARS,
+    Guard,
+    ModelUnavailableError,
+    __version__,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s")
@@ -39,9 +44,14 @@ async def lifespan(app: FastAPI):
     global _guard
     logger.info("loading Guard model (one-time)...")
     _guard = Guard()
-    # Warm the ONNX session with one inference so the first real request
-    # doesn't pay the cold-start cost.
-    _guard.protect("warmup")
+    try:
+        # Warm the ONNX session with one inference so the first real request
+        # doesn't pay the cold-start cost. If this fails, the model is
+        # unavailable and the container should be considered unhealthy.
+        _guard.protect("warmup")
+    except ModelUnavailableError as exc:
+        logger.error("Guard warmup failed — model unavailable: %s", exc)
+        raise
     logger.info("Guard ready")
     yield
     _guard = None
@@ -61,14 +71,20 @@ app = FastAPI(
 
 
 class ProtectRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=32_000)
+    prompt: str = Field(..., min_length=1, max_length=DEFAULT_MAX_INPUT_CHARS)
+    max_windows: int | None = None
+    overlap_tokens: int | None = None
+    normalize_whitespace: bool | None = None
 
 
 class ProtectResponse(BaseModel):
     risk: float = Field(..., ge=0.0, le=1.0)
     label: str  # "safe" | "attack"
-    stage_reached: str  # "heuristics" | "binary"
+    stage_reached: str  # "heuristics" | "classifier"
     latency_ms: float
+    windows_scanned: int
+    windows_total: int
+    windows_total_exact: bool
 
 
 # ────────────────────────────────────────────────────────────────────────
@@ -98,12 +114,24 @@ async def protect(req: ProtectRequest) -> ProtectResponse:
     if _guard is None:
         raise HTTPException(status_code=503, detail="Guard not initialized")
 
-    result = _guard.protect(req.prompt)
+    try:
+        result = _guard.protect(
+            req.prompt,
+            max_windows=req.max_windows,
+            overlap_tokens=req.overlap_tokens,
+            normalize_whitespace=req.normalize_whitespace,
+        )
+    except ModelUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
     return ProtectResponse(
         risk=result.risk,
         label=result.label,
         stage_reached=result.stage_reached,
         latency_ms=result.latency_ms,
+        windows_scanned=result.windows_scanned,
+        windows_total=result.windows_total,
+        windows_total_exact=result.windows_total_exact,
     )
 
 

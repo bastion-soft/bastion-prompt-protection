@@ -44,9 +44,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from bastion_prompt_protection import Guard, GuardConfig, GuardResult, Preset, ReportContext
-from bastion_prompt_protection.exceptions import PromptInjectionError
-from bastion_prompt_protection.telemetry import Reporter, default_reporter, make_record
+from bastion_prompt_protection import Guard, GuardOptions, GuardResult, Preset
+from bastion_prompt_protection.errors import PromptInjectionError
 
 try:
     from langchain_core.runnables import Runnable, RunnableConfig
@@ -98,29 +97,24 @@ class BastionGuardrail(Runnable[Any, Any]):
         threshold: float | None = None,
         block: bool = True,
         input_key: str | None = None,
-        preset: str | Preset = Preset.TINY,
-        config: GuardConfig | None = None,
-        reporter: Reporter | None = None,
+        config: GuardOptions | Preset | str | None = None,
     ) -> None:
         """
         Args:
             guard: A pre-built :class:`Guard`. If omitted, one is created from
-                ``preset`` / ``config``.
+                ``config``.
             threshold: Override the attack decision threshold (risk >= threshold
                 ⇒ attack). Defaults to the Guard's own ``attack_above``.
             block: Raise :class:`PromptInjectionError` on an attack (default).
                 Set ``False`` to pass the input through unchanged.
             input_key: When the chain input is a dict, the key whose value to
                 screen. If ``None``, all string values are screened together.
-            preset / config: Forwarded to :class:`Guard` when ``guard`` is None.
-            reporter: Telemetry reporter (composed in, not coupled to Guard).
-                Defaults to the env-configured reporter (no-op unless set).
+            config: Forwarded to :class:`Guard` when ``guard`` is None.
         """
-        self._guard = guard or Guard(preset=preset, config=config)
+        self._guard = guard or Guard(config)
         self._threshold = threshold
         self._block = block
         self._input_key = input_key
-        self._reporter = reporter or default_reporter()
 
     # -- public helpers ------------------------------------------------------
 
@@ -139,15 +133,6 @@ class BastionGuardrail(Runnable[Any, Any]):
     def _screen(self, input: Any) -> Any:
         text = self._extract(input)
         result = self._guard.protect(text)
-        self._reporter.report(
-            make_record(
-                result,
-                ReportContext(
-                    vector="direct", origin="user_prompt", source="langchain", content=text
-                ),
-                self._guard,
-            )
-        )
         if self._block and self._is_attack(result):
             raise PromptInjectionError(result)
         return input
@@ -209,20 +194,18 @@ class BastionGuardrailMiddleware(_MiddlewareBase):
         self,
         guard: Guard | None = None,
         *,
-        preset: str | Preset = Preset.TINY,
-        config: GuardConfig | None = None,
+        config: GuardOptions | Preset | str | None = None,
         threshold: float | None = None,
         check_input: bool = True,
         check_tool_results: bool = True,
         exit_behavior: str = "end",
         violation_message: str = _DEFAULT_VIOLATION_MESSAGE,
-        reporter: Reporter | None = None,
     ) -> None:
         """
         Args:
             guard: A pre-built :class:`Guard`. If omitted, one is created from
-                ``preset`` / ``config``.
-            preset / config: Forwarded to :class:`Guard` when ``guard`` is None.
+                ``config``.
+            config: Forwarded to :class:`Guard` when ``guard`` is None.
             threshold: Override the attack decision threshold (risk >= threshold
                 ⇒ attack). Defaults to the Guard's own decision.
             check_input: Screen incoming user messages (default ``True``).
@@ -243,13 +226,12 @@ class BastionGuardrailMiddleware(_MiddlewareBase):
                 f"exit_behavior must be 'end', 'error', or 'replace'; got {exit_behavior!r}"
             )
         super().__init__()
-        self._guard = guard or Guard(preset=preset, config=config)
+        self._guard = guard or Guard(config)
         self._threshold = threshold
         self._check_input = check_input
         self._check_tool_results = check_tool_results
         self._exit_behavior = exit_behavior
         self._violation_message = violation_message
-        self._reporter = reporter or default_reporter()
 
     # -- public helper -------------------------------------------------------
 
@@ -275,20 +257,6 @@ class BastionGuardrailMiddleware(_MiddlewareBase):
         for msg in self._messages_to_screen(state["messages"]):
             text = _message_text(msg)
             result = self._guard.protect(text)
-            # Tool results are the indirect-injection surface (origin=tool_result).
-            is_tool = isinstance(msg, ToolMessage)
-            self._reporter.report(
-                make_record(
-                    result,
-                    ReportContext(
-                        vector="indirect" if is_tool else "direct",
-                        origin="tool_result" if is_tool else "user_prompt",
-                        source="langchain",
-                        content=text,
-                    ),
-                    self._guard,
-                )
-            )
             if not self._is_attack(result):
                 continue
             if self._exit_behavior == "error":
@@ -298,17 +266,14 @@ class BastionGuardrailMiddleware(_MiddlewareBase):
                     "messages": [AIMessage(self._format(result))],
                     "jump_to": "end",
                 }
-            # "replace": neutralize the flagged message (keep its id so the
-            # message reducer overwrites it) and keep going.
+            # "replace": neutralize the flagged message and keep going.
             replacements.append(msg.model_copy(update={"content": self._format(result)}))
         if replacements:
             return {"messages": replacements}
         return None
 
     def _messages_to_screen(self, messages: list[Any]) -> list[Any]:
-        """The new messages since the last model response: the incoming user
-        turn on the first call, or tool results after a tool round. Anything
-        before the most recent ``AIMessage`` was already screened."""
+        """The new messages since the last model response."""
         new: list[Any] = []
         for msg in reversed(messages):
             if isinstance(msg, AIMessage):

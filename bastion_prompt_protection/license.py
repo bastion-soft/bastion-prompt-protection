@@ -9,7 +9,7 @@ container deployments.
 This is an *assurance / audit* layer, not DRM. Model access itself is gated at
 download time (the commercial weights are gated on the HF Hub). Use this to
 record and prove license validity in your own logs, or set
-``GuardConfig(require_license=True)`` if your compliance wants the process to
+``GuardOptions(require_license=True)`` if your compliance wants the process to
 refuse to start without a valid license.
 
 Needs the ``license`` extra::

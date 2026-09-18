@@ -20,8 +20,8 @@ python examples/05_local_cache/main.py
 
 The script does two things:
 
-1. **Option A** — points `Guard` at a project-local cache directory (`./.bastion-cache/`). First call downloads the model there; subsequent calls load from disk only.
-2. **Option B** — pre-downloads the model snapshot explicitly via `huggingface_hub.snapshot_download`, then sets `HF_HUB_OFFLINE=1` so any later network call hard-fails. Useful in CI / build steps where silent fallbacks would mask real issues.
+1. **Option A** — points `Guard` at a project-local cache directory (`./.bastion-cache/`). First call downloads the model there; subsequent calls load the cached snapshot from disk with **zero Hub calls** (no `HF_HUB_OFFLINE` required).
+2. **Option B** — pre-downloads the model snapshot explicitly via `huggingface_hub.snapshot_download`, then sets `HF_HUB_OFFLINE=1` so any stray Hub access hard-fails. Useful in CI / Docker build steps as belt-and-braces verification that the cache is complete.
 
 ## Expected output
 
@@ -37,7 +37,7 @@ offline-mode protect():
   ✓ ran fully offline against the local cache
 ```
 
-The second `protect()` runs after `HF_HUB_OFFLINE=1` is set. If the model weren't fully cached, that call would fail with `HFValidationError: offline mode is enabled`. The fact that it succeeded proves the cache is complete.
+The second `protect()` runs after `HF_HUB_OFFLINE=1` is set. The loader already skips the Hub when the snapshot is complete; `HF_HUB_OFFLINE=1` adds a hard fail if anything still tries to reach huggingface.co — useful in CI to prove the cache is complete.
 
 ## How it works
 
